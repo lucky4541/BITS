@@ -1,0 +1,22 @@
+{
+  "key": "backmatter",
+  "label": "Back Matter",
+  "configured": false,
+  "not_configured_reason": "CLIENT PROFILE NOT CONFIGURED - no client-specific XHTML structure has been supplied for this profile yet. Generation is blocked until a real structure is provided (see profiles/xhtml/index.json for a fully-configured example).",
+  "filename_hints": [
+    "backmatter"
+  ],
+  "html_title": "Back Matter",
+  "body_epub_type": "backmatter",
+  "section": {
+    "epub_type": "backmatter",
+    "role": null,
+    "class": "backmatter"
+  },
+  "header": {
+    "title_tag": "h1",
+    "title_class": "fmtitle",
+    "title_epub_type": "title"
+  },
+  "id_pattern": "{prefix}_1"
+}

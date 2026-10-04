@@ -1,0 +1,172 @@
+<Zoning project="TandF">
+	<styles>
+		<frontmatter>
+
+			<item shortcutKey="Z" usectrl="no" useshift="yes" usealt="yes">PartTitle</item>
+			<item shortcutKey="B" usectrl="yes" useshift="yes" usealt="no">PartSubTitle</item>
+			<item shortcutKey="C" usectrl="yes" useshift="yes" usealt="no">ChapTitle</item>
+			<item shortcutKey="D" usectrl="yes" useshift="yes" usealt="no">AuthorName</item>
+			<item shortcutKey="E" usectrl="yes" useshift="yes" usealt="no">AbstractTitle</item>
+			<item shortcutKey="F" usectrl="yes" useshift="yes" usealt="no">AbstractText</item>
+			<item shortcutKey="5" usectrl="yes" useshift="yes" usealt="yes">AbstractWeb</item>
+			<item shortcutKey="G" usectrl="yes" useshift="yes" usealt="no">EditorName</item>
+			<item shortcutKey="H" usectrl="yes" useshift="yes" usealt="no">Edition</item>
+			<item shortcutKey="I" usectrl="yes" useshift="yes" usealt="no">Translator</item>
+			<item shortcutKey="J" usectrl="yes" useshift="yes" usealt="no">Affiliation</item>
+			<item shortcutKey="K" usectrl="yes" useshift="yes" usealt="no">PubName</item>
+			<item shortcutKey="L" usectrl="yes" useshift="yes" usealt="no">PubLoc</item>
+			<item shortcutKey="M" usectrl="yes" useshift="yes" usealt="no">PubDate</item>
+			<item shortcutKey="N" usectrl="yes" useshift="yes" usealt="no">ISBN-hbk</item>
+			<item shortcutKey="O" usectrl="yes" useshift="yes" usealt="no">ISBN-ebk</item>
+			<item shortcutKey="P" usectrl="yes" useshift="yes" usealt="no">ISBN-pbk</item>
+			<item shortcutKey="Q" usectrl="yes" useshift="yes" usealt="no">ImprintStatement</item>
+			<item shortcutKey="R" usectrl="yes" useshift="yes" usealt="no">ImprintMoral</item>
+			<item shortcutKey="S" usectrl="yes" useshift="yes" usealt="no">ImprintReprod</item>
+			<item shortcutKey="T" usectrl="yes" useshift="yes" usealt="no">ImprintTrade</item>
+			<item shortcutKey="U" usectrl="yes" useshift="yes" usealt="no">ImprintBritish</item>
+			<item shortcutKey="V" usectrl="yes" useshift="yes" usealt="no">ImprintCIP</item>
+			<item shortcutKey="W" usectrl="yes" useshift="yes" usealt="no">Page</item>
+			<item shortcutKey="X" usectrl="yes" useshift="yes" usealt="no">RunningHeaderVerso</item>
+			<item shortcutKey="Y" usectrl="yes" useshift="yes" usealt="no">RunningHeaderRecto</item>
+			<item shortcutKey="Z" usectrl="yes" useshift="yes" usealt="no">Copyright-Statement</item>
+			<item shortcutKey="A" usectrl="no" useshift="yes" usealt="yes">Biography</item>
+			<item shortcutKey="B" usectrl="no" useshift="yes" usealt="yes">FMSectionHead</item>
+			<item shortcutKey="C" usectrl="no" useshift="yes" usealt="yes">BookTitle</item>
+			<item shortcutKey="D" usectrl="no" useshift="yes" usealt="yes">BookSubTitle</item>
+			<item shortcutKey="E" usectrl="no" useshift="yes" usealt="yes">ChapSubTitle</item>
+			<item shortcutKey="F" usectrl="no" useshift="yes" usealt="yes">Impression</item>
+			<item shortcutKey="G" usectrl="no" useshift="yes" usealt="yes">Annotation</item>
+			<item shortcutKey="H" usectrl="no" useshift="yes" usealt="yes">ISBN</item>
+			<item shortcutKey="I" usectrl="no" useshift="yes" usealt="yes">Imprint</item>
+			<item shortcutKey="J" usectrl="no" useshift="yes" usealt="yes">Notes</item>
+			<item shortcutKey="K" usectrl="no" useshift="yes" usealt="yes">Attrib</item>
+			<item shortcutKey="L" usectrl="no" useshift="yes" usealt="yes">Copyright-Year</item>
+			<item shortcutKey="M" usectrl="no" useshift="yes" usealt="yes">Copyright-Holder</item>
+			<item shortcutKey="N" usectrl="no" useshift="yes" usealt="yes">Keytermhd</item>
+			<item shortcutKey="O" usectrl="no" useshift="yes" usealt="yes">Keytermlist</item>
+			<item shortcutKey="P" usectrl="no" useshift="yes" usealt="yes">DOI</item>
+			<item shortcutKey="Q" usectrl="no" useshift="yes" usealt="yes">Au-fn</item>
+			<item shortcutKey="R" usectrl="no" useshift="yes" usealt="yes">Au-corresp</item>
+			<item shortcutKey="S" usectrl="no" useshift="yes" usealt="yes">FMChapterTitle</item>
+			<item shortcutKey="T" usectrl="no" useshift="yes" usealt="yes">Frontispiece</item>
+			<item shortcutKey="U" usectrl="no" useshift="yes" usealt="yes">FrontispieceCaption</item>
+			<item shortcutKey="V" usectrl="no" useshift="yes" usealt="yes">TOCTitle</item>
+			<item shortcutKey="W" usectrl="no" useshift="yes" usealt="yes">SeriesTitle</item>
+			<item shortcutKey="X" usectrl="no" useshift="yes" usealt="yes">Bio</item>
+		</frontmatter>
+		<bodypart>
+			<item shortcutKey="A" usectrl="yes" useshift="yes" usealt="yes">H1</item>
+			<item shortcutKey="B" usectrl="yes" useshift="yes" usealt="yes">H2</item>
+			<item shortcutKey="C" usectrl="yes" useshift="yes" usealt="yes">H3</item>
+			<item shortcutKey="D" usectrl="yes" useshift="yes" usealt="yes">H4</item>
+			<item shortcutKey="E" usectrl="yes" useshift="yes" usealt="yes">H5</item>
+			<item shortcutKey="F" usectrl="yes" useshift="yes" usealt="yes">Para</item>
+			<item shortcutKey="G" usectrl="yes" useshift="yes" usealt="yes" subelement="true">TextBoxTitle</item>
+			<item shortcutKey="H" usectrl="yes" useshift="yes" usealt="yes" subelement="true">TextBoxSectionHead</item>
+			<item shortcutKey="I" usectrl="yes" useshift="yes" usealt="yes" subelement="true">TextBoxPara</item>
+			<item shortcutKey="J" usectrl="yes" useshift="yes" usealt="yes" subelement="true">DisplayTableFootnote</item>
+			<item shortcutKey="K" usectrl="yes" useshift="yes" usealt="yes" subelement="true">DisplayTableLegend</item>
+			<item shortcutKey="L" usectrl="yes" useshift="yes" usealt="yes" subelement="true">ListNum</item>
+			<item shortcutKey="M" usectrl="yes" useshift="yes" usealt="yes" subelement="true">ListBull</item>
+			<item shortcutKey="N" usectrl="yes" useshift="yes" usealt="yes" subelement="true">ListUnn</item>
+			<item shortcutKey="1" usectrl="yes" useshift="yes" usealt="yes" subelement="true">ListUpperAlpha</item>
+			<item shortcutKey="2" usectrl="yes" useshift="yes" usealt="yes" subelement="true">ListLowerAlpha</item>
+			<item shortcutKey="3" usectrl="yes" useshift="yes" usealt="yes" subelement="true">ListUpperRoman</item>
+			<item shortcutKey="4" usectrl="yes" useshift="yes" usealt="yes" subelement="true">ListLowerRoman</item>
+			<item shortcutKey="O" usectrl="yes" useshift="yes" usealt="yes" subelement="true">DisplayTable</item>
+			<item shortcutKey="P" usectrl="yes" useshift="yes" usealt="yes" subelement="true">DisplayImageCaption</item>
+			<item shortcutKey="Q" usectrl="yes" useshift="yes" usealt="yes" subelement="true">DisplayImage</item>
+			<item shortcutKey="R" usectrl="yes" useshift="yes" usealt="yes" subelement="true">DispQuote</item>
+			<item shortcutKey="S" usectrl="yes" useshift="yes" usealt="yes" subelement="true">DispQuoteAttrib</item>
+			<item shortcutKey="T" usectrl="yes" useshift="yes" usealt="yes">Footnote</item>
+			<item shortcutKey="U" usectrl="yes" useshift="yes" usealt="yes">Note</item>
+			<item shortcutKey="V" usectrl="yes" useshift="yes" usealt="yes">Verse</item>
+			<item shortcutKey="W" usectrl="yes" useshift="yes" usealt="yes" subelement="true">SideBarTitle</item>
+			<item shortcutKey="X" usectrl="yes" useshift="yes" usealt="yes" subelement="true">SideBarSectionHead</item>
+			<item shortcutKey="Y" usectrl="yes" useshift="yes" usealt="yes" subelement="true">SideBarPara</item>
+			<item shortcutKey="Z" usectrl="yes" useshift="yes" usealt="yes">FootNoteTitle</item>
+		</bodypart>
+		<backmatter>
+			<item shortcutKey="A"  usectrl="no" useshift="no" usealt="yes">Refs</item>
+			<item shortcutKey="B" usectrl="no" useshift="no" usealt="yes">RefTitle</item>
+			<item shortcutKey="C" usectrl="no" useshift="no" usealt="yes">BiblioTitle</item>
+			<item shortcutKey="D" usectrl="no" useshift="no" usealt="yes">NotesTitle</item>
+			<item shortcutKey="E" usectrl="no" useshift="no" usealt="yes">NotesSubTitle</item>
+			<item shortcutKey="F" usectrl="no" useshift="no" usealt="yes">AppendixTitle</item>
+			<item shortcutKey="G" usectrl="no" useshift="no" usealt="yes">AppendixSubTitle</item>
+			<item shortcutKey="H" usectrl="no" useshift="no" usealt="yes">IndexTitle</item>
+			<item shortcutKey="I" usectrl="no" useshift="no" usealt="yes">IndexSubTitle</item>
+			<item shortcutKey="J" usectrl="no" useshift="no" usealt="yes">IndexEntry1</item>
+			<item shortcutKey="K" usectrl="no" useshift="no" usealt="yes">IndexEntry2</item>
+			<item shortcutKey="L" usectrl="no" useshift="no" usealt="yes">IndexEntry3</item>
+			<item shortcutKey="M" usectrl="no" useshift="no" usealt="yes">AckTitle</item>
+			<item shortcutKey="N" usectrl="no" useshift="no" usealt="yes">AckSubTitle</item>
+			<item shortcutKey="O" usectrl="no" useshift="no" usealt="yes">Signature</item>
+		    <item shortcutKey="P" usectrl="no" useshift="no" usealt="yes">GlossaryTitle</item>
+			<item shortcutKey="Q" usectrl="no" useshift="no" usealt="yes">Glossitem</item>
+			<item shortcutKey="R" usectrl="no" useshift="no" usealt="yes">Glossdef</item>
+			<item shortcutKey="S" usectrl="no" useshift="no" usealt="yes">AbbreviationTitle</item>
+			<item shortcutKey="T" usectrl="no" useshift="no" usealt="yes">Abbitem</item>	
+			<item shortcutKey="U" usectrl="no" useshift="no" usealt="yes">Abbdef</item>	
+			</backmatter>
+		<float>
+					<item shortcutKey="Z" usectrl="no" useshift="yes" usealt="yes" property="image">Img_Color_600_jpg</item>
+			<item shortcutKey="B" usectrl="yes" useshift="yes" usealt="no" property="image">Img_BW_600_jpg</item>
+			<item shortcutKey="C" usectrl="yes" useshift="yes" usealt="no" property="image">Img_Color_1200_jpg</item>
+			<item shortcutKey="D" usectrl="yes" useshift="yes" usealt="no" property="image">Img_BW_1200_jpg</item>
+			<item shortcutKey="E" usectrl="yes" useshift="yes" usealt="no" property="image">Img_Color_1200_TIF</item>
+			<item shortcutKey="F" usectrl="yes" useshift="yes" usealt="no" property="image">Img_BW_1200_TIF</item>
+			<item shortcutKey="B" usectrl="yes" useshift="no" usealt="no" subelement="true">TableCaption</item>
+			<item shortcutKey="C" usectrl="yes" useshift="no" usealt="no" subelement="true" property="table">Table</item>
+			<item shortcutKey="D" usectrl="yes" useshift="no" usealt="no" subelement="true">TableAsImage</item>
+			<item shortcutKey="E" usectrl="yes" useshift="no" usealt="no" subelement="true">TableFootnote</item>
+			<item shortcutKey="F" usectrl="yes" useshift="no" usealt="no" subelement="true">TableLegend</item>
+			<item shortcutKey="G" usectrl="yes" useshift="no" usealt="no" subelement="true">ImageCaption</item>
+			<item shortcutKey="H" usectrl="yes" useshift="no" usealt="no" subelement="true">Image</item>
+			<item shortcutKey="I" usectrl="yes" useshift="no" usealt="no" subelement="true">EquationAsImage</item>
+			<item shortcutKey="J" usectrl="yes" useshift="no" usealt="no">ArrayTable</item>
+			<item shortcutKey="K" usectrl="yes" useshift="no" usealt="no">InlineFigure</item>
+		</float>
+	</styles>
+	<language>
+		<item>English(en)</item>
+		<item>Afrikaans (af)</item>
+		<item>Albanian (sq)</item>
+		<item>Basque (eu)</item>
+		<item>Belarusian (be)</item>
+		<item>Bulgarian (bg)</item>
+		<item>Catalan (ca)</item>
+		<item>Croatian (hr)</item>
+		<item>Czech (cs)</item>
+		<item>Danish (da)</item>
+		<item>Dutch (nl)</item>
+		<item>Estonian (et)</item>
+		<item>Faroese (fo)</item>
+		<item>Finnish (fi)</item>
+		<item>French (fr)</item>
+		<item>Galician (gI)</item>
+		<item>German (de)</item>
+		<item>Greek (el)</item>
+		<item>Hungarian (hu)</item>
+		<item>Icelandic (is)</item>
+		<item>Indonesian (id)</item>
+		<item>Italian (it)</item>
+		<item>Latvian (lv)</item>
+		<item>Lithuanian (It)</item>
+		<item>Macedonian (mk)</item>
+		<item>Norwegian(no)</item>
+		<item>Polish (pl)</item>
+		<item>Portuguese (pt)</item>
+		<item>Portuguese Brazil (pt- BR)</item>
+		<item>Romanian (ro)</item>
+		<item>Russian (ru)</item>
+		<item>Serbian (sr)</item>
+		<item>Serbian Cyrillic(sr- Cyrl-CS)</item>
+		<item>Slovak (sk)</item>
+		<item>Slovenian (sl)</item>
+		<item>Spanish (es)</item>
+		<item>Swedish (sv)</item>
+		<item>Turkish (tr)</item>
+		<item>Ukrainian (uk)</item>
+	</language>
+</Zoning>

@@ -1,0 +1,11 @@
+Started 04-10-2026 11:12:14.01 
+============================================================
+EPUBForge - Standalone Single-EXE Build (no installer)
+============================================================
+
+[1/5] Verifying Python 3.11 build environment (required for PaddleOCR - see
+      packaging\dependency_report.txt section 6) ...
+  build_venv311 already exists - reusing it.
+
+[2/5] Installing runtime + build-only dependencies into build_venv311
+      (requirements.txt + packaging\requirements-build.txt) ...

@@ -1,0 +1,742 @@
+<Mapping>
+<!--<tag find="\\component" replace="body">
+<replace_attr type="new" name="epub_type" value="frontmatter"/>
+<replace_attr type="source" name="" value=""/>
+<attrib name=""  value=""/>
+<replace_attr/>
+</tag>-->
+<tag find="//component[@type='cover']/img">
+<replace_ele><span id="coverstart"/>
+<figure><img src="images/{0}" epub_type="cover" role="doc-cover" alt="BookCover"/></figure></replace_ele>
+<attrib findAttr="src"  replAttr="src"/>
+</tag>
+<tag>
+<replace_ele name="component" att="type">
+<attrib findAttr="cover" replTitle="Cover Page"/>
+<attrib findAttr="halftitle" replTitle="Half Title page"/>
+<attrib findAttr="series" replTitle="Series Page"/>
+<attrib findAttr="titlepage" replTitle="Title Page"/>
+<attrib findAttr="copyrightpage" replTitle="Copyright Page"/>
+<attrib findAttr="dedication" replTitle="Dedication"/>
+</replace_ele>
+</tag>
+<tag find="//para[not(@type)] | //p[not(@type)]">
+<replace_ele>
+<p></p>
+</replace_ele>
+</tag>
+<tag find="//eqn_img | //protitle | //dialogtitle | //poemtitle | //mst | //exhead | //ques" type="addFirst">
+<replace_ele>
+<break></break>
+</replace_ele>
+</tag>
+<tag find="img|figtitle|caption|figsource" type="enclose">
+<replace_ele>
+<figure></figure>
+</replace_ele>
+</tag>
+<tag find="figtitle|caption|figsource" type="enclose">
+<replace_ele>
+<figcaption></figcaption>
+</replace_ele>
+</tag>
+<tag find="//figcaption/caption">
+<replace_ele><p class="figcaption"></p></replace_ele>
+</tag>
+<tag find="//figcaption/figtitle">
+<replace_ele><p class="figtitle"></p></replace_ele>
+</tag>
+<tag find="//figcaption/figsource">
+<replace_ele><p class="figsource"></p></replace_ele>
+</tag>
+<tag find="//img[@type and @src]">
+<replace_ele><img src='images/{0}' class='{0}' alt='image'/></replace_ele>
+<attrib findAttr="src"  replAttr="src"/>
+'<attrib findAttr="type"  replAttr="class"/>
+</tag>
+<tag find="//uncapfig">
+<replace_ele><figure class="uncaptioned"><img src="images/{0}" class="center" alt="image"/></figure></replace_ele>
+<attrib findAttr="src"  replAttr="src"/>
+</tag>
+<tag find="//uncaptblimage">
+<replace_ele><figure class="UncapTable"><img src="images/{0}" alt="Table Image"/></figure></replace_ele>
+<attrib findAttr="src"  replAttr="src"/>
+</tag>
+<tag find="//inlinefig">
+<replace_ele><img src="images/{0}" class="inlinefig" alt="image"/></replace_ele>
+<attrib findAttr="src"  replAttr="src"/>
+</tag>
+<tag find="//iconfig">
+<replace_ele><img src="images/{0}" class="icon" alt="image"/></replace_ele>
+<attrib findAttr="src"  replAttr="src"/>
+</tag>
+<tag find="eqn_img|eqn_num" type="enclose">
+<replace_ele>
+<div class="equation"></div>
+</replace_ele>
+</tag>
+<tag find="eqn_img|eqn_num" type="enclose">
+<replace_ele>
+<p></p>
+</replace_ele>
+</tag>
+<tag find="//eqn_num">
+<replace_ele><span class="eqn_num"></span></replace_ele>
+</tag>
+
+<tag find="//eqn_img">
+<replace_ele><span class="eq-img"><img src="images/{0}" alt="Equation Image"/></span></replace_ele>
+<attrib findAttr="src"  replAttr="src"/>
+</tag>
+<tag find="//ineq_img">
+<replace_ele><span class="ieq-img"><img src="images/{0}" alt="Equation Image"/></span></replace_ele>
+<attrib findAttr="src"  replAttr="src"/>
+</tag>
+<tag find="tblcaption|tblimage|tblfoot|tblsource" type="enclose">
+<replace_ele>
+<figure class="Table"></figure>
+</replace_ele>
+</tag>
+<tag find="tblcaption" type="enclose">
+<replace_ele>
+<figcaption></figcaption>
+</replace_ele>
+</tag>
+<tag find="//figure/tblfoot">
+<replace_ele><p class="tblfoot"></p></replace_ele>
+</tag>
+<tag find="//figure/tblsource">
+<replace_ele><p class="tblsource"></p></replace_ele>
+</tag>
+<tag find="//figcaption/tblcaption">
+<replace_ele><p class="tblcaption"></p></replace_ele>
+</tag>
+<tag find="//tblimage">
+<replace_ele><img src="images/{0}" alt="Table Image"/></replace_ele>
+<attrib findAttr="src"  replAttr="src"/>
+</tag>
+
+<tag find="maintitle|subtitle|chapau|chapaff" type="enclose">
+<replace_ele>
+<header></header>
+</replace_ele>
+</tag>
+<tag find="//h1|//boxsec_1" type="coverAbove">
+<replace_ele><sec1></sec1></replace_ele>
+</tag>
+<tag find="//h2|//boxsec_2" type="coverAbove">
+<replace_ele><sec2></sec2></replace_ele>
+</tag>
+<tag find="//h3|//boxsec_3" type="coverAbove">
+<replace_ele><sec3></sec3></replace_ele>
+</tag>
+<tag find="//h4" type="coverAbove">
+<replace_ele><sec4></sec4></replace_ele>
+</tag>
+<tag find="//h5" type="coverAbove">
+<replace_ele><sec5></sec5></replace_ele>
+</tag>
+<tag find="//h6" type="coverAbove">
+<replace_ele><sec6></sec6></replace_ele>
+</tag>
+
+<tag find="//component[@type='halftitle']">
+<replace_ele><body epub_type="frontmatter">
+<section epub_type="halftitlepage" class="halftitlepage" aria-labelledby="half"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='series']">
+<replace_ele><body epub_type="frontmatter">
+<section epub_type="seriespage" class="seriespage" aria-labelledby="series"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='titlepage']">
+<replace_ele><body epub_type="frontmatter">
+<section epub_type="titlepage" class="titlepage" aria-labelledby="titlepage"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='copyrightpage']">
+<replace_ele><body epub_type="frontmatter">
+<section epub_type="copyright-page" class="copyrightpage" aria-label="Copyright Page"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='dedication']">
+<replace_ele><body epub_type="frontmatter">
+<section epub_type="dedication" role="doc-dedication" class="dedication" aria-labelledby="ded1"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='toc']">
+<replace_ele><body epub_type="frontmatter">
+<section epub_type="toc" role="doc-toc" class="contents" aria-labelledby="toc1"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='preface']">
+<replace_ele><body epub_type="frontmatter">
+<section epub_type="preface" role="doc-preface" class="preface" aria-labelledby="pref1"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='contributor']">
+<replace_ele><body epub_type="frontmatter">
+<section epub_type="contributors" class="contributor" aria-labelledby="contrib1"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='acknow']">
+<replace_ele><body epub_type="frontmatter">
+<section epub_type="acknowledgments" role="doc-acknowledgments" class="acknowledgments" aria-labelledby="acknow1"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='foreword']">
+<replace_ele><body epub_type="frontmatter">
+<section epub_type="foreword" role="doc-foreword" class="foreword" aria-labelledby="foreword1"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='introduction']">
+<replace_ele><body epub_type="frontmatter">
+<section epub_type="introduction" role="doc-introduction" class="introduction" aria-labelledby="intro1"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='fm']">
+<replace_ele><body epub_type="frontmatter">
+<section class="fm" aria-labelledby="fm1"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='bm']">
+<replace_ele><body epub_type="backmatter">
+<section epub_type="backmatter" class="bm" aria-labelledby="bm1"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='chapter']">
+<replace_ele><body epub_type="bodymatter">
+<section epub_type="chapter" role="doc-chapter" class="chapter" aria-labelledby="c{0}"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='part'] | //component[@type='section']">
+<replace_ele><body epub_type="bodymatter">
+<section epub_type="part" role="doc-part" class="part" aria-labelledby="c{0}"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='appendix']">
+<replace_ele><body epub_type="backmatter">
+<section epub_type="appendix" role="doc-appendix" class="appendix" aria-labelledby="a{0}"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='glossary']">
+<replace_ele><body epub_type="backmatter">
+<section epub_type="glossary" role="doc-glossary" class="glossary" aria-labelledby="g{0}"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='index']">
+<replace_ele><body epub_type="backmatter">
+<section epub_type="index" role="doc-index" class="index" aria-labelledby="index1"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='bibliography']">
+<replace_ele><body epub_type="backmatter">
+<section epub_type="bibliography" role="doc-bibliography" class="bibliography" aria-labelledby="bib1"></section>
+</body></replace_ele>
+</tag>
+<tag find="//component[@type='cover']">
+<replace_ele>
+<body epub_type="frontmatter">
+<section aria-label="chapter opening">
+</section></body>
+</replace_ele>
+</tag>
+<tag find="//bookeditor">
+<replace_ele><p class="bookeditor"></p></replace_ele>
+</tag>
+<tag find="//bookauthor">
+<replace_ele><p class="bookauthor"></p></replace_ele>
+</tag>
+<tag find="//bookaff">
+<replace_ele><p class="bookaff"></p></replace_ele>
+</tag>
+<tag find="//bookedition">
+<replace_ele><p class="bookedition"></p></replace_ele>
+</tag>
+<tag find="//bookvolume">
+<replace_ele><p class="bookvolume"></p></replace_ele>
+</tag>
+<tag find="//publogo[@src]">
+<replace_ele><p><br/><br/><br/><br/><br/><br/><br/><br/><br/></p>
+<figure class="publogo"><img alt="Publisher Logo" src="images/{0}"/></figure></replace_ele>
+<attrib findAttr="src"  replAttr="src"/>
+</tag>
+<tag find="//copylogo[@src]">
+<replace_ele><figure class="copylogo"><img alt="Copyright Logo" src="images/{0}"/></figure></replace_ele>
+<attrib findAttr="src"  replAttr="src"/>
+</tag>
+<tag find="//sigline">
+<replace_ele><p class="sigline"></p></replace_ele>
+</tag>
+<tag find="//chapau">
+<replace_ele><p class="chapau"></p></replace_ele>
+</tag>
+<tag find="//chapaff">
+<replace_ele><p class="chapaff"></p></replace_ele>
+</tag>
+<tag find="abstitle|abspara" type="enclose">
+<replace_ele>
+<div class="abstract" epub_type="abstract" role="doc-abstract"></div>
+</replace_ele>
+</tag>
+<tag find="//abstitle">
+<replace_ele>
+<h2 class="abstitle"></h2>
+</replace_ele>
+</tag>
+<tag find="//abspara">
+<replace_ele>
+<p class="abspara"></p>
+</replace_ele>
+</tag>
+<tag find="kwdtitle|kwd" type="enclose">
+<replace_ele>
+<div class="keywords" epub_type="keywords"></div>
+</replace_ele>
+</tag>
+<tag find="//kwdtitle">
+<replace_ele>
+<h2 class="kwdtitle"></h2>
+</replace_ele>
+</tag>
+<tag find="//kwd">
+<replace_ele><p class="kwd"></p></replace_ele>
+</tag>
+
+<tag find="//blockquote[not(@class)]">
+<replace_ele>
+<blockquote1></blockquote1>
+</replace_ele>
+</tag>
+<tag find="blockquote1|blockquote_source" type="enclose">
+<replace_ele>
+<blockquote></blockquote>
+</replace_ele>
+</tag>
+<tag find="//blockquote_source">
+<replace_ele>
+<p class="blockquote_source"></p>
+</replace_ele>
+</tag>
+<tag find="//blockquote1">
+<replace_ele>
+<p></p>
+</replace_ele>
+</tag>
+
+<tag find="epigraph|episource" type="enclose">
+<replace_ele>
+<blockquote class="epigraph" epub_type="epigraph" role="doc-epigraph"></blockquote>
+</replace_ele>
+</tag>
+<tag find="//epigraph">
+<replace_ele>
+<p></p>
+</replace_ele>
+</tag>
+<tag find="//episource">
+<replace_ele>
+<p class="episource"></p>
+</replace_ele>
+</tag>
+
+<tag find="//para[@type] | //p[@type]">
+<replace_ele>
+<p class="{0}"></p>
+</replace_ele>
+<attrib findAttr="type"  replAttr="class"/>
+</tag>
+
+<tag find="//para_center | //p_center">
+<replace_ele>
+<p class="center"></p>
+</replace_ele>
+</tag>
+<tag find="//para_right | //p_right">
+<replace_ele>
+<p class="right"></p>
+</replace_ele>
+</tag>
+<tag find="//parahang | //p[@type='hang']">
+<replace_ele>
+<p class="hang"></p>
+</replace_ele>
+</tag>
+
+<!--<tag find="tocfm|tocfm_1|tocfm_2|tocpart|tocch|tocau|tocsec_1|tocsec_2|tocsec_3|tocsec_4|tocsec_5|tocappendices|tocappend|tocapp_1|tocapp_2|tocapp_3|tocbm|tocbm_1|tocbm_2" type="enclose">
+<replace_ele><ul class="toc"></ul>
+</replace_ele>
+</tag>-->
+
+<tag find="tocsec_5" type="enclose">
+<replace_ele><sec5></sec5>
+</replace_ele>
+</tag>
+<tag find="tocsec_4" type="enclose">
+<replace_ele><sec4></sec4>
+</replace_ele>
+</tag>
+<tag find="tocsec_3" type="enclose">
+<replace_ele><sec3></sec3>
+</replace_ele>
+</tag>
+<tag find="tocsec_2" type="enclose">
+<replace_ele><sec2></sec2>
+</replace_ele>
+</tag><tag find="tocsec_1" type="enclose">
+<replace_ele><sec1></sec1>
+</replace_ele>
+</tag>
+<tag find="tocapp_3" type="enclose">
+<replace_ele><sec2></sec2>
+</replace_ele>
+</tag>
+<tag find="tocapp_2" type="enclose">
+<replace_ele><sec2></sec2>
+</replace_ele>
+</tag><tag find="tocapp_1" type="enclose">
+<replace_ele><sec1></sec1>
+</replace_ele>
+</tag>
+<tag find="tocfm_3" type="enclose">
+<replace_ele><sec2></sec2>
+</replace_ele>
+</tag><tag find="tocfm_1" type="enclose">
+<replace_ele><sec1></sec1>
+</replace_ele>
+</tag>
+<tag find="tocbm_2" type="enclose">
+<replace_ele><sec2></sec2>
+</replace_ele>
+</tag>
+<tag find="tocbm_1" type="enclose">
+<replace_ele><sec1></sec1>
+</replace_ele>
+</tag>
+<tag find="tocpart|tocappendices" type="enclose">
+<replace_ele><ssec></ssec>
+</replace_ele>
+</tag>
+<tag find="parttocentry|parttocentry_1" type="enclose">
+<replace_ele><toc class="parttoc"></toc>
+</replace_ele>
+</tag>
+<tag find="chtocentry|chtocentry_1" type="enclose">
+<replace_ele><toc class="chtoc"></toc>
+</replace_ele>
+</tag>
+<tag find="tocbm" type="enclose">
+<replace_ele><bssec></bssec>
+</replace_ele>
+</tag>
+
+<tag find="tocfm|tocau|tocch" type="enclose">
+<replace_ele><sec0></sec0>
+</replace_ele>
+</tag>
+<tag find="parttocentry_1" type="enclose">
+<replace_ele><ul></ul>
+</replace_ele>
+</tag>
+<tag find="chtocentry_1" type="enclose">
+<replace_ele><ul></ul>
+</replace_ele>
+</tag>
+
+<tag find="//tocfm|//tocfm_1|//tocfm_3|//tocpart|//tocch|//tocsec_1|//tocsec_2|//tocsec_3|//tocsec_4|//tocsec_5|//tocappendices|//tocappend|//tocapp_1|//tocapp_2|//tocapp_3|//tocbm|//tocbm_1|//tocbm_2|//parttocentry|//parttocentry_1|//chtocentry|//chtocentry_1">
+<replace_ele><li><a href="{0}"></a></li>
+</replace_ele>
+<attrib findAttr="refp"  replAttr="href"/>
+</tag>
+<tag find="//tocau">
+<replace_ele><p class="tocau"><a href="{0}"></a></p>
+</replace_ele>
+<attrib findAttr="refp"  replAttr="href"/>
+</tag>
+<tag find="//toc">
+<replace_ele><ul class="{0}"></ul>
+</replace_ele>
+<attrib findAttr="class"  replAttr="class"/>
+</tag>
+
+
+<!--<tag find="tocfm|tocfm_1|tocfm_2|tocpart|tocch|tocau|tocsec_1|tocsec_2|tocsec_3|tocsec_4|tocsec_5|tocappendices|tocappend|tocapp_1|tocapp_2|tocapp_3|tocbm|tocbm_1|tocbm_2|parttocentry|parttocentry_1|chtocentry|chtocentry_1|ul" type="enclose">
+<replace_ele><ul class="toc"></ul>
+</replace_ele>
+</tag>-->`
+<!--<tag find="tocfm_1|tocfm_2" type="enclose">
+<replace_ele><tocfm></tocfm>
+</replace_ele>
+</tag>
+<tag find="tocsec_1|tocsec_2|tocsec_3|tocsec_4|tocsec_5" type="enclose">
+<replace_ele><tocch></tocch>
+</replace_ele>
+</tag>
+<tag find="tocappendices|tocappend|tocapp_1|tocapp_2|tocapp_3" type="enclose">
+<replace_ele><tocappendices></tocappendices>
+</replace_ele>
+</tag>
+<tag find="tocbm_1|tocbm_2" type="enclose">
+<replace_ele><tocbm></tocbm>
+</replace_ele>
+</tag>
+<tag find="parttocentry|parttocentry_1" type="enclose">
+<replace_ele><tocpart></tocpart>
+</replace_ele>
+</tag>
+<tag find="chtocentry|chtocentry_1" type="enclose">
+<replace_ele><tocch></tocch>
+</replace_ele>
+</tag>
+<tag find="//tocfm|//tocpart|//tocch|//tocau|//tocappendices|//tocbm">
+<replace_ele><li></li>
+</replace_ele>
+</tag>-->
+
+<!--<tag find="">
+<replace_ele><li></li>
+</replace_ele>
+</tag>
+<tag find="">
+<replace_ele><li></li>
+</replace_ele>
+</tag>
+<tag find="">
+<replace_ele><li></li>
+</replace_ele>
+</tag>-->
+<!--<tag find="tocfm_1|tocfm_2" type="coverBelow">
+<replace_ele><ul></ul>
+</replace_ele>
+</tag>-->
+
+<tag find="//listpara">
+<replace_ele><p class="listpara"></p></replace_ele>
+</tag>
+
+<tag find="//bpara[not(@type)]">
+<replace_ele>
+<p class="bpara"></p>
+</replace_ele>
+</tag>
+<tag find="//bpara[@type='noindent']">
+<replace_ele>
+<p class="bpara_noindent"></p>
+</replace_ele>
+</tag>
+<tag find="//bsource">
+<replace_ele>
+<p class="bsource"></p>
+</replace_ele>
+</tag>
+<tag find="//box[child::boxtitle]">
+<replace_ele>
+<aside class="{0}"><section></section></aside>
+</replace_ele>
+<attrib findAttr="type"  replAttr="class"/>
+</tag>
+<tag find="//box[not(child::boxtitle)]">
+<replace_ele>
+<aside class="{0}"></aside>
+</replace_ele>
+<attrib findAttr="type"  replAttr="class"/>
+</tag>
+<tag find="//aside//boxtitle">
+<replace_ele><h1 class="boxtitle"></h1></replace_ele>
+</tag>
+<tag find="//aside//boxsec_1">
+<replace_ele><h2 class="head1"></h2></replace_ele>
+</tag>
+<tag find="//aside//boxsec_2">
+<replace_ele><h3 class="head2"></h3></replace_ele>
+</tag>
+<tag find="//aside//boxsec_3">
+<replace_ele><h4 class="head3"></h4></replace_ele>
+</tag>
+<tag find="protitle|proimage" type="enclose">
+<replace_ele>
+<div class="codeblock"></div>
+</replace_ele>
+</tag>
+<tag find="protitle|proimage" type="enclose">
+<replace_ele>
+<section></section>
+</replace_ele>
+</tag>
+<tag find="//protitle">
+<replace_ele><h1></h1></replace_ele>
+</tag>
+<tag find="//proimage">
+<replace_ele><figure class="code"><img src="images/{0}" alt="Program Code"/></figure></replace_ele>
+<attrib findAttr="src"  replAttr="src"/>
+</tag>
+<tag find="dialogtitle|speaker|speech|dialogsource" type="enclose">
+<replace_ele>
+<div class="dialog"></div>
+</replace_ele>
+</tag>
+<tag find="dialogtitle|speaker|speech|dialogsource" type="enclose">
+<replace_ele>
+<section></section>
+</replace_ele>
+</tag>
+<tag find="//speakers">
+<replace_ele>
+<p class="dialogline"></p>
+</replace_ele>
+</tag>
+<!--<tag find="//speaker">
+<replace_ele>
+<span class="speaker"></span>
+</replace_ele>
+</tag>
+<tag find="//speech">
+<replace_ele>
+<span class="speech"></span>
+</replace_ele>
+</tag>-->
+<tag find="//dialogsource">
+<replace_ele>
+<p class="dialogsource"></p>
+</replace_ele>
+</tag>
+<tag find="poemtitle|poemline|poemsource" type="enclose">
+<replace_ele>
+<div class="poem"></div>
+</replace_ele>
+</tag>
+<tag find="poemtitle|poemline|poemsource" type="enclose">
+<replace_ele>
+<section></section>
+</replace_ele>
+</tag>
+<tag find="//poemline">
+<replace_ele>
+<p class="poemline"></p>
+</replace_ele>
+</tag>
+<tag find="//poemsource">
+<replace_ele>
+<p class="poemsource"></p>
+</replace_ele>
+</tag>
+<tag find="//poemtitle|//dialogtitle">
+<replace_ele><h1></h1></replace_ele>
+</tag>
+<tag find="//marginnote">
+<replace_ele><aside class="marginalnote">
+<p class="marginnote"></p></aside></replace_ele>
+</tag>
+<tag find="//mst">
+<replace_ele>
+<div class="{0}"><section></section></div>
+</replace_ele>
+<attrib findAttr="type"  replAttr="class"/>
+</tag>
+<tag find="//msttitle">
+<replace_ele><h1 class='msttitle'></h1></replace_ele>
+</tag>
+<tag find="exhead|expara|pagenum" type="enclose">
+<replace_ele>
+<sec1></sec1>
+</replace_ele>
+<attrib findAttr="type"  replAttr="class"/>
+</tag>
+<tag find="//exhead">
+<replace_ele><h1 class='exhead'></h1></replace_ele>
+</tag>
+<tag find="//expara[not(@type)]">
+<replace_ele><p class='expara'></p></replace_ele>
+</tag>
+<tag find="//expara[@type='noindent']">
+<replace_ele><p class='expara noindent'></p></replace_ele>
+</tag>
+<tag find="glosshead|glossterm|glossdef" type="enclose">
+<replace_ele>
+<sec1 class="glossary" epub_type="glossary" role="doc-glossary"></sec1>
+</replace_ele>
+</tag>
+<tag find="glossterm|glossdef" type="enclose">
+<replace_ele>
+<dl></dl>
+</replace_ele>
+</tag>
+<tag find="//glosshead">
+<replace_ele><h1 id='glos{0}'></h1></replace_ele>
+</tag>
+<tag find="//glossterm">
+<replace_ele><dt id="dt{0}" class="glossterm" epub_type="glossterm" role="term"><dfn></dfn></dt></replace_ele>
+</tag>
+<tag find="//glossdef">
+<replace_ele><dd class="glossdef" epub_type="glossdef" role="definition"></dd></replace_ele>
+</tag>
+<tag find="//ques">
+<replace_ele><p class='ques'></p></replace_ele>
+</tag>
+<tag find="//ans">
+<replace_ele><p class='ans'></p></replace_ele>
+</tag>
+<tag find="//hint">
+<replace_ele><p class='hint'></p></replace_ele>
+</tag>
+<tag find="//ackhead">
+<replace_ele><sec1 class="acknow" epub_type="acknowledgments" role="doc-acknowledgments"><h1 id="ack1"></h1>
+</sec1></replace_ele>
+</tag>
+<tag find="//refhead">
+<replace_ele><sec1 class="bibliography" epub_type="bibliography" role="doc-bibliography"><h1 id="ref1"></h1>
+</sec1></replace_ele>
+</tag>
+<tag find="ref_n" type="enclose">
+<replace_ele>
+<ol class="bibnumbered"></ol>
+</replace_ele>
+</tag>
+<tag find="ref_d" type="enclose">
+<replace_ele>
+<ol class="bibnamedate"></ol>
+</replace_ele>
+</tag>
+<tag find="//ref_d | //ref_n">
+<replace_ele><li class="biblioentry" epub_type="biblioentry"></li></replace_ele>
+</tag>
+<tag find="enhead|en" type="enclose">
+<replace_ele><sec1 class="endnote" epub_types="endnotes" role="doc-endnotes"></sec1></replace_ele>
+</tag>
+<tag find="//enhead">
+<replace_ele><h1 class='enhead'></h1></replace_ele>
+</tag>
+<tag find="fn" type="enclose">
+<replace_ele><sec1 class="footnotes" epub_types="footnotes"></sec1></replace_ele>
+</tag>
+<tag find="en" type="enclose">
+<replace_ele><ol class="endnotes"></ol></replace_ele>
+</tag>
+<tag find="fn" type="enclose">
+<replace_ele><ol class="footnotes"></ol></replace_ele>
+</tag>
+<tag find="//fn">
+<replace_ele><li class="fn" epub_type="footnote" role="doc-footnote"></li></replace_ele>
+</tag>
+<tag find="//en">
+<replace_ele><li class="en" epub_type="endnote"></li></replace_ele>
+</tag>
+<tag find="indexprimary" type="enclose">
+<replace_ele><sec2></sec2>
+</replace_ele>
+</tag>
+<tag find="indexsecondary" type="enclose">
+<replace_ele><sec3></sec3>
+</replace_ele>
+</tag>
+<tag find="indexterritory" type="enclose">
+<replace_ele><sec4></sec4>
+</replace_ele>
+</tag>
+<tag find="//indexprimary | //indexsecondary | //indexterritory">
+<replace_ele><li epub_type="index-entry"></li>
+</replace_ele>
+</tag>
+<tag find="li|ol|ul|numlist_1|numlist_2|numlist_3|numlist_4|numlist_5|numlist_6|plainlist_1|plainlist_2|plainlist_3|plainlist_4|plainlist_5|plainlist_6|bulllist_1|bulllist_2|bulllist_3|bulllist_4|bulllist_5|bulllist_6|customlist_1|customlist_2|customlist_3|customlist_4|customlist_5|customlist_6|ref_d|ref_n|tocfm|tocfm_1|tocfm_3|tocpart|tocch|tocau|tocsec_1|tocsec_2|tocsec_3|tocsec_4|tocsec_5|tocappendices|tocappend|tocapp_1|tocapp_2|tocapp_3|tocbm|tocbm_1|tocbm_2" type="prevEle"/>
+</Mapping>

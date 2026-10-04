@@ -1,0 +1,2 @@
+ACTIVE PADDLE ENGINE FILE:
+C:\Users\HP\Desktop\ZoneTool\core\ocr\paddle_engine.py

@@ -1,0 +1,22 @@
+{
+  "key": "appendix",
+  "label": "Appendix",
+  "configured": false,
+  "not_configured_reason": "CLIENT PROFILE NOT CONFIGURED - no client-specific XHTML structure has been supplied for this profile yet. Generation is blocked until a real structure is provided (see profiles/xhtml/index.json for a fully-configured example).",
+  "filename_hints": [
+    "appendix"
+  ],
+  "html_title": "Appendix",
+  "body_epub_type": "backmatter",
+  "section": {
+    "epub_type": "appendix",
+    "role": null,
+    "class": "appendix"
+  },
+  "header": {
+    "title_tag": "h1",
+    "title_class": "fmtitle",
+    "title_epub_type": "title"
+  },
+  "id_pattern": "{prefix}app_1"
+}

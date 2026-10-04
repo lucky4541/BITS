@@ -1,0 +1,7 @@
+<SPiCET>
+<Style Name="PageNum" validate_emptyzone="true" Validate_AssociateText="false" Mandatory="true" />
+<Style Name="ParaStart" validate_emptyzone="true" Validate_AssociateText="false" Mandatory="true" />
+<Style Name="ParaEnd" validate_emptyzone="true" Validate_AssociateText="false" Mandatory="true" />
+<Style Name="Box_Start" validate_emptyzone="true" Validate_AssociateText="false" Mandatory="true" />
+<Style Name="Box_End" validate_emptyzone="true" Validate_AssociateText="false" Mandatory="true" />
+</SPiCET>

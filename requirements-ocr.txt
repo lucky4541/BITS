@@ -1,0 +1,4 @@
+# ZoneTool OCR runtime
+# Python 3.11/3.12 environment
+paddleocr==3.7.0
+paddlepaddle==3.1.0

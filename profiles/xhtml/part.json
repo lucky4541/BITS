@@ -1,0 +1,22 @@
+{
+  "key": "part",
+  "label": "Part",
+  "configured": false,
+  "not_configured_reason": "CLIENT PROFILE NOT CONFIGURED - no client-specific XHTML structure has been supplied for this profile yet. Generation is blocked until a real structure is provided (see profiles/xhtml/index.json for a fully-configured example).",
+  "filename_hints": [
+    "part"
+  ],
+  "html_title": "Part",
+  "body_epub_type": "bodymatter",
+  "section": {
+    "epub_type": "part",
+    "role": null,
+    "class": "part"
+  },
+  "header": {
+    "title_tag": "h1",
+    "title_class": "fmtitle",
+    "title_epub_type": "title"
+  },
+  "id_pattern": "{prefix}pt_1"
+}

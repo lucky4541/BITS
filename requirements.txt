@@ -1,0 +1,35 @@
+PyMuPDF>=1.23.0
+Pillow>=10.0.0
+lxml>=4.9.0
+fonttools>=4.50.0
+numpy>=1.24.0
+opencv-python-headless>=4.8.0
+
+# Spell verifier (core/verification/spell_verifier.py) - pure Python, no
+# native/system dependencies, works fully offline once installed. Chosen
+# over pyenchant (needs the native Enchant C library on the machine) to
+# match this project's existing dependency weight class.
+pyspellchecker>=0.8.1
+
+# Build tooling (not needed to RUN EPUBForge from source, only to build the
+# production Windows installer) has moved to packaging/requirements-build.txt,
+# since the production build itself runs from a SEPARATE Python 3.11 venv
+# (this project's own primary interpreter has no paddlepaddle wheel) - see
+# that file and packaging/dependency_report.txt section 6 for the full story.
+
+# Optional OCR engine (see core/ocr/paddle_engine.py) - EPUBForge detects
+# its absence gracefully and disables OCR without affecting digital-PDF
+# processing when it's not installed from source under THIS interpreter.
+# Requires Python 3.8-3.12 (this project's own primary interpreter may be
+# newer - check `python --version` before installing). VERIFIED working
+# combination (real end-to-end OCR recognition tested directly, not just
+# documentation): paddleocr==3.7.0 + paddlepaddle==3.1.0. Do NOT install
+# the latest paddlepaddle blindly - 3.3.1 and 3.0.0 were both directly
+# confirmed BROKEN against paddleocr 3.7.0 (two different real PIR-executor
+# errors; see paddle_engine.py's own docstring and PaddlePaddle/PaddleOCR
+# GitHub issue #18162 for the 3.3.1 case specifically), and 2.6.2 is too
+# old (missing an API paddlex 3.7.2's inference runner requires). The
+# packaged production installer bundles these regardless of what's
+# installed here - see packaging/requirements-build.txt.
+# paddleocr==3.7.0
+# paddlepaddle==3.1.0

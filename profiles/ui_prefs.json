@@ -1,0 +1,15 @@
+{
+  "theme": "light",
+  "ocr_engine": "PaddleOCR",
+  "ocr_language": "en",
+  "ocr_dpi": 400,
+  "ocr_mode": "auto",
+  "ocr_preprocessing": {
+    "deskew": false,
+    "remove_borders": false,
+    "grayscale": false,
+    "enhance_contrast": false,
+    "denoise": false,
+    "adaptive_threshold": false
+  }
+}
