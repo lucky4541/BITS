@@ -1,0 +1,538 @@
+{
+  "name": "BITS",
+  "description": "BITS 2.2 book (book-meta, front-matter, book-body / book-part, book-back)",
+  "output": "bits-book",
+  "xml_enabled": true,
+  "xhtml_enabled": false,
+  "root_tag": "book",
+  "page_marker_tags": [
+    "pagenumber"
+  ],
+  "footnote_flow_tags": [
+    "fn",
+    "en"
+  ],
+  "non_flow_tags": [
+    "figure",
+    "graphic",
+    "equation"
+  ],
+  "tag_buttons": [
+    {
+      "label": "Book Title",
+      "tag": "book-title",
+      "attrs": {}
+    },
+    {
+      "label": "Book Subtitle",
+      "tag": "book-subtitle",
+      "attrs": {}
+    },
+    {
+      "label": "Author",
+      "tag": "contrib",
+      "attrs": {
+        "@contrib-type": "author"
+      }
+    },
+    {
+      "label": "Editor",
+      "tag": "contrib",
+      "attrs": {
+        "@contrib-type": "editor"
+      }
+    },
+    {
+      "label": "Affiliation",
+      "tag": "aff",
+      "attrs": {}
+    },
+    {
+      "label": "Series Title",
+      "tag": "series-title",
+      "attrs": {}
+    },
+    {
+      "label": "Publisher",
+      "tag": "publisher-name",
+      "attrs": {}
+    },
+    {
+      "label": "Publisher Place",
+      "tag": "publisher-loc",
+      "attrs": {}
+    },
+    {
+      "label": "ISBN",
+      "tag": "isbn",
+      "attrs": {}
+    },
+    {
+      "label": "Copyright",
+      "tag": "copyright-statement",
+      "attrs": {}
+    },
+    {
+      "label": "Edition",
+      "tag": "edition",
+      "attrs": {}
+    },
+    {
+      "label": "Part Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "part"
+      }
+    },
+    {
+      "label": "Chapter Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "chapter"
+      }
+    },
+    {
+      "label": "Chapter Number / Label",
+      "tag": "label",
+      "attrs": {}
+    },
+    {
+      "label": "Chapter Author",
+      "tag": "chapter-contrib",
+      "attrs": {
+        "@contrib-type": "author"
+      }
+    },
+    {
+      "label": "Chapter Abstract",
+      "tag": "abstract",
+      "attrs": {}
+    },
+    {
+      "label": "Keywords",
+      "tag": "kwd",
+      "attrs": {}
+    },
+    {
+      "label": "Title Group",
+      "tag": "title-group",
+      "attrs": {}
+    },
+    {
+      "label": "Title",
+      "tag": "title",
+      "attrs": {}
+    },
+    {
+      "label": "Subtitle",
+      "tag": "subtitle",
+      "attrs": {}
+    },
+    {
+      "label": "Dedication",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "dedication"
+      }
+    },
+    {
+      "label": "Foreword Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "foreword"
+      }
+    },
+    {
+      "label": "Preface Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "preface"
+      }
+    },
+    {
+      "label": "Introduction Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "introduction"
+      }
+    },
+    {
+      "label": "Acknowledgments Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "ack"
+      }
+    },
+    {
+      "label": "Contents Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "toc"
+      }
+    },
+    {
+      "label": "Front Matter Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "front-matter-part"
+      }
+    },
+    {
+      "label": "Section Heading 1",
+      "tag": "h2",
+      "attrs": {}
+    },
+    {
+      "label": "Section Heading 2",
+      "tag": "h3",
+      "attrs": {}
+    },
+    {
+      "label": "Section Heading 3",
+      "tag": "h4",
+      "attrs": {}
+    },
+    {
+      "label": "Section Heading 4",
+      "tag": "h5",
+      "attrs": {}
+    },
+    {
+      "label": "Section Heading 5",
+      "tag": "h6",
+      "attrs": {}
+    },
+    {
+      "label": "Paragraph",
+      "tag": "p",
+      "attrs": {}
+    },
+    {
+      "label": "Extract / Quote",
+      "tag": "disp-quote",
+      "attrs": {}
+    },
+    {
+      "label": "Epigraph",
+      "tag": "epigraph",
+      "attrs": {}
+    },
+    {
+      "label": "Verse Line",
+      "tag": "verse-line",
+      "attrs": {}
+    },
+    {
+      "label": "Speech",
+      "tag": "speech",
+      "attrs": {}
+    },
+    {
+      "label": "Statement (Theorem...)",
+      "tag": "statement",
+      "attrs": {}
+    },
+    {
+      "label": "Code / Preformat",
+      "tag": "preformat",
+      "attrs": {}
+    },
+    {
+      "label": "Definition Term",
+      "tag": "term",
+      "attrs": {}
+    },
+    {
+      "label": "Definition",
+      "tag": "def",
+      "attrs": {}
+    },
+    {
+      "label": "Label",
+      "tag": "label",
+      "attrs": {}
+    },
+    {
+      "label": "Page Number",
+      "tag": "pagenumber",
+      "attrs": {}
+    },
+    {
+      "label": "List Bullet",
+      "tag": "list-bullet",
+      "attrs": {}
+    },
+    {
+      "label": "List Number",
+      "tag": "list",
+      "attrs": {
+        "list_type": "order"
+      }
+    },
+    {
+      "label": "List Alpha",
+      "tag": "list",
+      "attrs": {
+        "list_type": "alpha-upper"
+      }
+    },
+    {
+      "label": "List Lower Alpha",
+      "tag": "list",
+      "attrs": {
+        "list_type": "alpha-lower"
+      }
+    },
+    {
+      "label": "List Roman",
+      "tag": "list",
+      "attrs": {
+        "list_type": "roman-lower"
+      }
+    },
+    {
+      "label": "List Simple",
+      "tag": "list",
+      "attrs": {
+        "list_type": "simple"
+      }
+    },
+    {
+      "label": "List Item",
+      "tag": "list-item",
+      "attrs": {}
+    },
+    {
+      "label": "Figure",
+      "tag": "figure",
+      "attrs": {}
+    },
+    {
+      "label": "Caption",
+      "tag": "caption",
+      "attrs": {}
+    },
+    {
+      "label": "Graphic",
+      "tag": "graphic",
+      "attrs": {}
+    },
+    {
+      "label": "Equation (display)",
+      "tag": "equation",
+      "attrs": {}
+    },
+    {
+      "label": "Table",
+      "tag": "table",
+      "attrs": {}
+    },
+    {
+      "label": "Table Draw",
+      "tag": "table",
+      "attrs": {}
+    },
+    {
+      "label": "Table Caption",
+      "tag": "table-caption",
+      "attrs": {}
+    },
+    {
+      "label": "Table Wrap Foot",
+      "tag": "table-wrap-foot",
+      "attrs": {}
+    },
+    {
+      "label": "Boxed Text",
+      "tag": "boxed-text",
+      "attrs": {}
+    },
+    {
+      "label": "Boxed Text Start",
+      "tag": "boxed-text-start",
+      "attrs": {}
+    },
+    {
+      "label": "Boxed Text End",
+      "tag": "boxed-text-end",
+      "attrs": {}
+    },
+    {
+      "label": "Footnote",
+      "tag": "fn",
+      "attrs": {}
+    },
+    {
+      "label": "Endnote",
+      "tag": "en",
+      "attrs": {}
+    },
+    {
+      "label": "Bibliography",
+      "tag": "bibliography",
+      "attrs": {}
+    },
+    {
+      "label": "Reference",
+      "tag": "reference",
+      "attrs": {}
+    },
+    {
+      "label": "Appendix Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "appendix"
+      }
+    },
+    {
+      "label": "Notes Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "notes"
+      }
+    },
+    {
+      "label": "Glossary Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "glossary"
+      }
+    },
+    {
+      "label": "Bibliography Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "bibliography"
+      }
+    },
+    {
+      "label": "Index Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "index"
+      }
+    },
+    {
+      "label": "Index Entry",
+      "tag": "index-entry",
+      "attrs": {}
+    },
+    {
+      "label": "Index Subentry",
+      "tag": "index-entry",
+      "attrs": {
+        "@index-level": "2"
+      }
+    },
+    {
+      "label": "Index Sub-subentry",
+      "tag": "index-entry",
+      "attrs": {
+        "@index-level": "3"
+      }
+    }
+  ],
+  "tag_groups": [
+    {
+      "label": "Book metadata",
+      "first": "Book Title"
+    },
+    {
+      "label": "Book parts",
+      "first": "Part Title"
+    },
+    {
+      "label": "Front matter",
+      "first": "Dedication"
+    },
+    {
+      "label": "Headings",
+      "first": "Section Heading 1"
+    },
+    {
+      "label": "Text",
+      "first": "Paragraph"
+    },
+    {
+      "label": "Lists",
+      "first": "List Bullet"
+    },
+    {
+      "label": "Figures & tables",
+      "first": "Figure"
+    },
+    {
+      "label": "Boxes",
+      "first": "Boxed Text"
+    },
+    {
+      "label": "Notes & references",
+      "first": "Footnote"
+    },
+    {
+      "label": "Back matter",
+      "first": "Appendix Title"
+    },
+    {
+      "label": "Index",
+      "first": "Index Entry"
+    }
+  ],
+  "tag_colors": {
+    "book-title": "#8E24AA",
+    "book-subtitle": "#8E24AA",
+    "contrib": "#8E24AA",
+    "aff": "#8E24AA",
+    "series-title": "#8E24AA",
+    "publisher-name": "#8E24AA",
+    "publisher-loc": "#8E24AA",
+    "isbn": "#8E24AA",
+    "copyright-statement": "#8E24AA",
+    "edition": "#8E24AA",
+    "h1": "#1E88E5",
+    "label": "#3949AB",
+    "chapter-contrib": "#3949AB",
+    "abstract": "#3949AB",
+    "kwd": "#3949AB",
+    "title-group": "#3949AB",
+    "title": "#3949AB",
+    "subtitle": "#3949AB",
+    "h2": "#1E88E5",
+    "h3": "#42A5F5",
+    "h4": "#64B5F6",
+    "h5": "#90CAF9",
+    "h6": "#BBDEFB",
+    "p": "#43A047",
+    "disp-quote": "#43A047",
+    "epigraph": "#43A047",
+    "verse-line": "#43A047",
+    "speech": "#43A047",
+    "statement": "#43A047",
+    "preformat": "#43A047",
+    "term": "#43A047",
+    "def": "#43A047",
+    "pagenumber": "#9E9E9E",
+    "list-bullet": "#00897B",
+    "list": "#00897B",
+    "list-item": "#00897B",
+    "figure": "#F4511E",
+    "caption": "#F4511E",
+    "graphic": "#F4511E",
+    "equation": "#F4511E",
+    "table": "#F4511E",
+    "table-caption": "#F4511E",
+    "table-wrap-foot": "#F4511E",
+    "boxed-text": "#6D4C41",
+    "boxed-text-start": "#6D4C41",
+    "boxed-text-end": "#6D4C41",
+    "fn": "#FB8C00",
+    "en": "#FB8C00",
+    "bibliography": "#FB8C00",
+    "reference": "#FB8C00",
+    "index-entry": "#C0CA33"
+  },
+  "index_hierarchy_tags": {},
+  "image_kinds": {},
+  "component_types": [],
+  "mapping_xml_path": ""
+}

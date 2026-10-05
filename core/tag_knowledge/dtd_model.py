@@ -66,7 +66,10 @@ class ElementDecl:
 def _convert(node) -> ContentNode:
     if node is None:
         return None
-    out = ContentNode(kind=node.type, occur=node.occur, name=node.name)
+    name = node.name
+    if name and getattr(node, "prefix", None):
+        name = f"{node.prefix}:{name}"           # mml:fn is not the JATS / BITS <fn>
+    out = ContentNode(kind=node.type, occur=node.occur, name=name)
     # lxml exposes binary trees (left/right) for seq/or nodes - flatten
     # same-kind chains so (a, b, c) reads as one sequence.
     if node.type in ("seq", "or"):
@@ -203,10 +206,14 @@ class DTDModel:
         self.entities = {}
         for el in dtd.elements():
             content = _convert(el.content)
-            decl = ElementDecl(name=el.name, type=el.type, content=content)
+            # prefixed names (mml:fn, xml:lang, xlink:href) are kept prefixed, so
+            # MathML's <mml:fn> never replaces the JATS / BITS <fn> declaration
+            name = f"{el.prefix}:{el.name}" if el.prefix else el.name
+            decl = ElementDecl(name=name, type=el.type, content=content)
             for a in el.attributes():
-                decl.attributes[a.name] = AttributeDecl(name=a.name, type=a.type, default=a.default,
-                                                        default_value=a.default_value, values=list(a.values()))
+                aname = f"{a.prefix}:{a.name}" if a.prefix else a.name
+                decl.attributes[aname] = AttributeDecl(name=aname, type=a.type, default=a.default,
+                                                       default_value=a.default_value, values=list(a.values()))
             decl.allowed_children = _names(content)
             decl.first_children = _first(content)
             follows = {}
@@ -214,15 +221,15 @@ class DTDModel:
             decl.follows = follows
             decl.required_children = _required(content)
             _cardinality(content, decl.child_cardinality)
-            self.elements[el.name] = decl
+            self.elements[name] = decl
         for ent in dtd.entities():
             self.entities[ent.name] = ent.content
 
     # ---------------------------------------------------------- loading
     @classmethod
     def from_file(cls, path: str) -> "DTDModel":
-        with open(path, "rb") as f:
-            return cls(etree.DTD(f), source=path)
+        # by path, so a modular DTD (JATS / BITS) resolves its own module files
+        return cls(etree.DTD(path), source=path)
 
     @classmethod
     def from_string(cls, text: str, source: str = "<string>") -> "DTDModel":

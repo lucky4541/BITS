@@ -5,16 +5,8 @@ anti-pattern the spec this was built from prohibits) - role comes FIRST,
 from signals the zoning stage already got right:
 
   - A page-number zone is already tagged core.constants.TAG_PAGENUMBER
-    ("pagenumber") in the generic/XML profile, or carries
-    attributes["cup_name"] == core.cup_config.PAGENUM_CUP_NAME ("PageNum")
-    in the CUP profile - exactly the same two signals core.epub_xml_
-    generator.py's own _gen_pagenum_zone dispatch already checks (see
-    that file's _resolve_zone_to_elements, the `if self.pagenum_cup_name
-    and zone.attributes.get("cup_name") == self.pagenum_cup_name` branch).
-  - A footnote/endnote zone is already tagged "fn"/"en" (core.
-    epub_xml_generator.EpubXmlGenerator._NOTE_TAGS' own keys, imported
-    directly here rather than re-declared, so the two modules can never
-    silently drift apart).
+    ("pagenumber").
+  - A footnote/endnote zone is already tagged "fn"/"en" (NOTE_TAGS).
   - Whether a nested "en"/"fn" zone (or an inline digit-only run inside
     an ordinary paragraph) is a genuine citation marker reuses the exact
     same evidence _gen_endnote_marker already applies: the candidate's
@@ -29,7 +21,9 @@ CALLOUT > NORMAL_TEXT)."""
 import re
 
 from core.constants import TAG_PAGENUMBER
-from core.cup_config import PAGENUM_CUP_NAME
+
+# footnote / endnote zone tags (BITS / JATS profiles: both become <fn>)
+NOTE_TAGS = ("fn", "en")
 
 PAGE_NUMBER = "PAGE_NUMBER"
 BODY_FOOTNOTE_CALLOUT = "BODY_FOOTNOTE_CALLOUT"
@@ -42,18 +36,13 @@ _SENTENCE_END_CHARS = ".!?"
 
 
 def is_page_number_zone(zone) -> bool:
-    if zone.tag == TAG_PAGENUMBER:
-        return True
-    return zone.attributes.get("cup_name") == PAGENUM_CUP_NAME
+    return zone.tag == TAG_PAGENUMBER
 
 
 def note_zone_kind(zone):
     """Returns "fn"/"en" if this zone is a footnote/endnote zone (whether
-    top-level content or a nested marker), else None. Reuses core.epub_
-    xml_generator's own _NOTE_TAGS dict directly (import-only, no
-    generator instance needed - _NOTE_TAGS is a plain class attribute)."""
-    from core.epub_xml_generator import EpubXmlGenerator
-    return zone.tag if zone.tag in EpubXmlGenerator._NOTE_TAGS else None
+    top-level content or a nested marker), else None."""
+    return zone.tag if zone.tag in NOTE_TAGS else None
 
 
 def classify_zone_role(zone) -> str:

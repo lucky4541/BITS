@@ -415,7 +415,7 @@ class VerificationWindow(tk.Toplevel):
         self.footer_badges_label = tk.Label(footer, text="", anchor="w")
         self.footer_badges_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
         tk.Button(footer, text="Save Verification", command=self.save_verification).pack(side=tk.RIGHT, padx=2)
-        tk.Button(footer, text="Generate XHTML", command=self._generate_xhtml).pack(side=tk.RIGHT, padx=2)
+        tk.Button(footer, text="Generate XML", command=self._generate_xhtml).pack(side=tk.RIGHT, padx=2)
 
     def _build_context_menu(self):
         menu = tk.Menu(self, tearoff=0)
@@ -1872,7 +1872,7 @@ class VerificationWindow(tk.Toplevel):
         unresolved_high = [i for i in self.session.issues if i.severity == "HIGH" and i.is_unresolved()]
         if unresolved_high:
             choice = messagebox.askyesnocancel(
-                "Generate XHTML",
+                "Generate XML",
                 f"Verification has {len(unresolved_high)} unresolved HIGH-severity issue(s) remaining.\n\n"
                 "Generate anyway, or review the issues first?")
             if choice is None:
@@ -1881,7 +1881,7 @@ class VerificationWindow(tk.Toplevel):
                 self._on_status_badge_click()
                 return
         self.save_verification()
-        self.app.generate_xhtml()
+        self.app.generate_xml()
 
     def _on_close(self):
         self.app.verification_session = self.session

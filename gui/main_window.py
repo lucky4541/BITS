@@ -10,18 +10,13 @@ from pathlib import Path
 from core.pdf_loader import PDFDocument
 from core.zone_manager import ZoneManager
 from core import project_manager, xml_generator, validation, debug_log, text_extractor, reading_order
+from core.bits import pipeline as bits_pipeline
 from core import paragraph_merge
 from core import autosave_service
 from core import table_extractor
 from core import profile_manager
-from core.epub_xml_generator import EpubXmlGenerator
-from core.mapping_engine import MappingEngine, MappingLoadError
-from core import xhtml_writer
 from core import tag_normalizer
 from gui.smart_auto_zone_ui import SmartAutoZoneUI
-from core import xhtml_profile_manager
-from core import client_xhtml_generator
-from core import cup_config, cup_validation
 from core.component_output import ComponentOutputManager
 from core import component_output
 from core.resource_path import writable_root
@@ -1142,13 +1137,12 @@ class App:
         # FILENAMES/element ids, never the output folder path anymore - see
         # core.component_output.ComponentOutputManager.
         self.settings["output_folder_name"] = output_folder_name
-        # CUPEPUB is the default profile for every brand-new project (spec
-        # section 1) - the "already has a project.json" branch above is
-        # what makes this apply ONLY to a genuinely new project, never to
-        # one with an existing saved profile (priority rule, section 2).
-        self.settings["profile"] = "CUPEPUB"
-        self.set_profile("CUPEPUB", persist=False)
-        self._suggest_xhtml_profile(path)
+        # BITS is the default profile for every brand-new project - the
+        # "already has a project.json" branch above is what makes this apply
+        # ONLY to a genuinely new project, never to one with an existing
+        # saved profile.
+        self.settings["profile"] = profile_manager.DEFAULT_PROFILE_NAME
+        self.set_profile(profile_manager.DEFAULT_PROFILE_NAME, persist=False)
         self.viewer.load_page(self.current_page)
         self.zone_tree.refresh()
         self.toolbar.set_rotation_label(self.page_rotations.get(self.current_page, 0))
@@ -2425,18 +2419,6 @@ class App:
         self.active_tag_buttons = profile_manager.tag_buttons_of(profile)
         self.settings["profile"] = profile.get("name", name).upper()
         self.tag_panel.rebuild(self.active_tag_buttons, profile.get("tag_colors", {}), profile.get("tag_groups"))
-        # Switching TO CUPEPUB auto-selects Output = CUPEPUB (spec: "EPUBForge
-        # - TYPE Dropdown, CUPEPUB Output Behavior" - "the default OUTPUT must
-        # automatically become CUPEPUB"), which is CUPEPUB's real production
-        # XHTML workflow (see update_generation_controls() below) - never a
-        # permanent lock, the Output dropdown stays fully enabled/selectable
-        # (ttk.Combobox state="readonly", never "disabled"). Switching AWAY
-        # from CUPEPUB deliberately does NOT force Output back to anything -
-        # it simply stays whatever it already was, exactly as before this
-        # spec (Output has never been profile-locked for any other profile).
-        if self.settings["profile"] == "CUPEPUB":
-            self.settings["generation_type"] = "CUPEPUB"
-            self.toolbar.generation_type_var.set("CUPEPUB")
         self.toolbar.set_profile_options(self.settings["profile"])
         self.update_generation_controls()
         self._apply_cup_shortcuts(profile)
@@ -2447,114 +2429,12 @@ class App:
             # only persists the new active profile setting.
             self.mark_dirty("profile_changed", critical=True)
 
-    def set_generation_type(self, generation_type: str):
-        """"Generation Type" / "Output" (spec: EPUBForge Part 7) - CUPEPUB /
-        XHTML-EPUB / Client XHTML. A DIFFERENT, additive setting from the
-        existing "Profile" dropdown above (which still independently
-        controls the Tag Toolbox's tag set and the profile-level
-        xhtml_enabled gate) - see update_generation_controls() for how the
-        two combine on the Generate XML/XHTML buttons."""
-        self.settings["generation_type"] = generation_type
-        self.update_generation_controls()
-        self.set_status(f"Output: {generation_type}")
-        self.mark_dirty("generation_settings_changed")
-
     def update_generation_controls(self):
-        """THE single function (spec: "Create/use a single function such as
-        update_generation_controls()... Do not duplicate this logic in
-        multiple callbacks") that evaluates the current Profile + Output
-        (generation_type) and updates Generate XML state, Generate XHTML
-        state, and the TYPE dropdown's own available values - called from
-        every place either input can change (set_profile, set_generation_
-        type), never computed ad hoc elsewhere. TYPE itself is NEVER an
-        input to this decision (spec: "TYPE must NOT become a required
-        condition for XHTML") - only read separately at generation time via
-        settings["epub_component_type"], exactly as it already was before
-        this spec (core.epub_xml_generator's own existing fallback to the
-        profile's default_component_type when unset is completely
-        unchanged).
-
-        xml_enabled / xhtml_enabled below reproduce the EXISTING behavior
-        for every Profile+Output combination unchanged, with exactly ONE
-        new, explicitly-targeted exception (spec: "Generate XML must be
-        DISABLED" / "Generate XHTML must be ENABLED" for Profile=CUPEPUB +
-        Output=CUPEPUB specifically - CUPEPUB's real production workflow is
-        Generate XHTML via the existing, untouched Mapping.xml pipeline;
-        the OLD default of enabling XML instead for that exact combination
-        predates that pipeline's own completion). Verified by exhaustive
-        truth-table check against the prior implementation before this
-        change was made - every other Profile/Output cell computes
-        identically to before."""
-        profile_is_cupepub = (self.active_profile.get("name") or "").upper() == "CUPEPUB"
-        generation_type = self.settings.get("generation_type", "CUPEPUB")
-        output_is_cupepub = generation_type == "CUPEPUB"
-        profile_xhtml_enabled = bool(self.active_profile.get("xhtml_enabled"))
-
-        if profile_is_cupepub and output_is_cupepub:
-            xml_enabled = False
-            xhtml_enabled = profile_xhtml_enabled
-        else:
-            xml_enabled = output_is_cupepub
-            xhtml_enabled = profile_xhtml_enabled and not output_is_cupepub
-
-        self.toolbar.set_xml_enabled(xml_enabled)
-        self.toolbar.set_xhtml_enabled(xhtml_enabled)
-        self.toolbar.set_xhtml_profile_combo_enabled(generation_type == "Client XHTML")
-        self.toolbar.refresh_type_dropdown(self.active_profile.get("component_types") or [])
-
-    def set_generation_component_type(self, component_type_key):
-        """TYPE dropdown selection (spec: "optional content-structure
-        configuration"). Writes the SAME existing settings["epub_component_
-        type"] key App.generate_xhtml()/generate_xml() already read before
-        this spec existed - zero changes needed at either generation call
-        site. component_type_key=None (the "Select Type" placeholder)
-        clears it back to "", which those call sites' own existing fallback
-        (`... or self.active_profile.get("default_component_type", ...)`)
-        already handles exactly as if TYPE had never been touched at all -
-        never a required step before Generate XHTML/XML."""
-        self.settings["epub_component_type"] = component_type_key or ""
-        self.mark_dirty("generation_settings_changed")
-
-    def set_xhtml_profile(self, profile_key: str):
-        """XHTML Profile selection (spec Part 8) - purely a generation-time
-        setting. Never touches zones/OCR text/coordinates/reading order/
-        images (spec: "changing the selected XHTML profile must NEVER
-        delete or modify" them) - true by construction here, since this
-        only writes two string keys into self.settings."""
-        if not profile_key:
-            return
-        profile = xhtml_profile_manager.get_profile(profile_key)
-        if not profile:
-            return
-        self.settings["xhtml_profile_key"] = profile_key
-        label = profile.get("label", profile_key)
-        display = label if profile.get("configured") else f"{label} (not configured)"
-        self.settings["xhtml_profile_label"] = display
-        self.set_status(f"XHTML Profile: {display}")
-        self.mark_dirty("xhtml_profile_changed")
-
-    def _suggest_xhtml_profile(self, pdf_path: str):
-        """Filename-based XHTML Profile suggestion (spec Part 6) - a
-        SUGGESTION only, shown via a toast, never authoritative: a
-        "_bm3.pdf"-style filename only ever suggests the generic "Back
-        Matter" category (xhtml_profile_manager.suggest_profile_key is
-        itself deliberately coarse for this reason), never a specific
-        guess like Index/Bibliography/Glossary. Only pre-fills the
-        dropdown when nothing is selected yet - never overrides an
-        explicit user choice for the document already open."""
-        suggested_key = xhtml_profile_manager.suggest_profile_key(pdf_path)
-        if not suggested_key:
-            return
-        profile = xhtml_profile_manager.get_profile(suggested_key)
-        if not profile:
-            return
-        label = profile.get("label", suggested_key)
-        display = label if profile.get("configured") else f"{label} (not configured)"
-        if not self.settings.get("xhtml_profile_key"):
-            self.settings["xhtml_profile_key"] = suggested_key
-            self.settings["xhtml_profile_label"] = display
-            self.toolbar.xhtml_profile_var.set(display)
-        self.notify(f"✓ Auto-detected from filename: {label}", kind="info")
+        """Generate XML produces the active profile's output: BITS 2.2 book
+        (profile BITS) or JATS 1.4 article (profile JATS)."""
+        kind = "JATS" if (self.active_profile.get("name") or "").upper() == "JATS" else "BITS"
+        self.toolbar.set_xml_enabled(True)
+        self.toolbar.set_output_label(f"Output: {kind} XML")
 
     def _apply_cup_shortcuts(self, profile):
         """Registers/unregisters CUPEPUB's keyboard shortcuts (core/
@@ -3131,21 +3011,6 @@ class App:
         self.root.lift()
         self.root.focus_force()
 
-    def show_cup_diagnostics(self):
-        """File > CUPEPUB Config Status... (spec section 55) - always
-        available (not gated on CUPEPUB being the active profile), so the
-        user can check what's wrong BEFORE switching to it. Re-reads every
-        profiles/CUPEPUB/*.xml file fresh (does not depend on whether
-        CUPEPUB is currently loaded/cached), so this always reflects the
-        files on disk right now."""
-        try:
-            diag = cup_config.build_cup_profile()["cup_diagnostics"]
-        except cup_config.CupConfigError as e:
-            messagebox.showerror("CUPEPUB Config Status", f"CUPEPUB cannot load:\n\n{e}")
-            return
-        lines = [f"{k}: {v}" for k, v in diag.items()]
-        messagebox.showinfo("CUPEPUB Config Status", "\n".join(lines))
-
     # ---------------- XML generation ----------------
     def _refresh_overlap_highlight(self, page_marker_tags):
         """Shared by generate_xml/generate_xhtml/_generate_client_xhtml
@@ -3212,38 +3077,35 @@ class App:
         # "Filename... must remain EXACTLY the filename provided"); element
         # IDs get the separately-derived SHORT id_prefix below.
         id_prefix = component_output.derive_id_prefix(prefix)
-        output_dir = APP_ROOT / "output"
-        assets_dir = APP_ROOT / "assets"
+        output_dir = APP_ROOT / "output" / (self.settings.get("output_folder_name") or prefix)
+        assets_dir = output_dir / "images"
         output_path = output_dir / f"{prefix}.xml"
+        kind = bits_pipeline.kind_of(self.active_profile)
+        self.set_status(f"Generating {kind} XML...")
         try:
-            path, counters, asset_counters = xml_generator.generate_xml(
-                self.zone_manager, self.pdf_document, str(output_path), str(assets_dir),
-                prefix=id_prefix, jpeg_quality=self.settings.get("jpeg_quality", 95),
-                root_tag=self.settings.get("root_tag", "book"),
+            res = bits_pipeline.generate(
+                self.zone_manager, self.pdf_document, kind, str(output_path), str(assets_dir), prefix=id_prefix,
+                settings=self.settings.get("bits_meta") or {},
+                jpeg_quality=self.settings.get("jpeg_quality", 95),
                 image_dpi=self.settings.get("image_dpi", 200),
                 remove_image_background=self.settings.get("remove_image_background", False))
         except Exception as e:
-            messagebox.showerror("Generate XML", f"Failed to generate XML:\n{e}")
+            messagebox.showerror("Generate XML", f"Failed to generate {kind} XML:\n{e}")
+            self.set_status("XML generation failed")
             return
         self.zone_tree.refresh()
         self.viewer.redraw()
-
-        warning = None
-        try:
-            from lxml import etree
-            root_el = etree.parse(path).getroot()
-            warning = validation.check_content_loss(self.zone_manager, root_el)
-        except Exception:
-            pass
-
-        summary = (f"XML written to:\n{path}\n\nSections: {counters['section']}  "
-                   f"Boxed-text: {counters['boxed_text']}\nFigures: {asset_counters.get('figure', 0)}  "
-                   f"Equations: {asset_counters.get('equation', 0)}")
-        if warning:
-            messagebox.showwarning("Generate XML - possible content loss", summary + "\n\n" + warning)
+        summary = (res.summary() + f"\n\nSections: {res.counters.get('section', 0)}  "
+                   f"Figures: {res.asset_counters.get('figure', 0)}  "
+                   f"Equations: {res.asset_counters.get('equation', 0)}\nReport: {res.report_path}")
+        if not res.text_preserved:
+            messagebox.showwarning("Generate XML - check the text", summary)
+        elif res.errors_after:
+            messagebox.showwarning("Generate XML - needs review",
+                                   summary + "\n\nRemaining DTD errors:\n" + "\n".join(res.errors_after[:8]))
         else:
             messagebox.showinfo("Generate XML", summary)
-        self.set_status(f"Generated {path}")
+        self.set_status(f"{kind} XML: {res.status} - {res.output_path}")
 
     # ---------------- verification (core/verification/) ----------------
     def open_verification_window(self):
@@ -3264,428 +3126,6 @@ class App:
             return
         from gui.verification_window import VerificationWindow
         self.verification_window = VerificationWindow(self)
-
-    # ---------------- XHTML generation (EPUB profile) ----------------
-    def _generate_client_xhtml(self):
-        """"Client XHTML" generation (spec Part 9-12) - routes through
-        core.client_xhtml_generator instead of Mapping.xml, using the
-        selected profiles/xhtml/<key>.json for the final body/section/
-        header wrapping. Writes to the SAME output/{prefix}/ layout
-        Generate XHTML always has (core.component_output.
-        ComponentOutputManager) - a Client XHTML run and an EPUB/CUPEPUB
-        XHTML run for the same prefix intentionally overwrite the same
-        output file (one document, one chosen generation pipeline at a
-        time), never two divergent outputs left lying around."""
-        if not self.pdf_document:
-            messagebox.showwarning("Generate XHTML", "Open a PDF first.")
-            return
-        if not self.zone_manager.zones:
-            messagebox.showwarning("Generate XHTML", "No zones to generate from.")
-            return
-        profile_key = self.settings.get("xhtml_profile_key")
-        xhtml_profile = xhtml_profile_manager.get_profile(profile_key) if profile_key else None
-        if not xhtml_profile:
-            messagebox.showwarning("Generate XHTML", "Select an XHTML Profile first.")
-            return
-
-        self._repair_broken_merges()
-        errors = validation.validate(self.zone_manager, self.active_profile.get("page_marker_tags"),
-                                       self.active_profile.get("footnote_flow_tags"),
-                                       self.active_profile.get("non_flow_tags"))
-        self._refresh_overlap_highlight(self.active_profile.get("page_marker_tags"))
-        if errors:
-            messagebox.showerror("Generate XHTML", "Fix these issues before generating:\n\n" + "\n".join(errors[:20]))
-            return
-
-        # Post-zoning Hyphen Normalization Review (spec: "Hyphenated
-        # Line-Break Normalization Before XHTML Generation" - workflow:
-        # zoning completed -> review -> Generate XHTML) - the EXACT SAME
-        # check/dialog Generate XML already uses, just wired into this
-        # path too; skipped entirely (zero dialog, zero behavior change)
-        # when there's nothing to review. Cancel aborts XHTML generation.
-        if text_extractor.find_all_hyphen_candidates(self.zone_manager, self.pdf_document):
-            dlg = HyphenReviewDialog(self.root, self.zone_manager, self.pdf_document)
-            if not dlg.result:
-                return
-
-        prefix = self.settings.get("prefix", "document")
-        id_prefix = component_output.derive_id_prefix(prefix)
-        # One shared output folder per PDF project (spec: never one folder
-        # per component) - falls back to this component's own prefix only
-        # for a project saved before output_folder_name existed, so an
-        # older project's regenerate still works exactly as it did before.
-        output_folder_name = self.settings.get("output_folder_name") or prefix
-        output_mgr = ComponentOutputManager(APP_ROOT / "output" / output_folder_name, prefix)
-        output_mgr.ensure_dirs()
-        images_dir = output_mgr.images_dir
-        xhtml_path = output_mgr.xhtml_path
-
-        try:
-            # Client XHTML uses EpubXmlGenerator internally too.  Keep this
-            # path under the SAME hard cache-only generation guard as the
-            # normal EPUB/CUPEPUB generation path.  This means Generate
-            # XHTML can read the project's prepared OCR cache, but it can
-            # NEVER construct PaddleOCR or run OCR again.
-            with ocr_service.generation_cache_only_scope():
-                with text_extractor.generation_ocr_cache_scope(self.ocr_cache, self.ocr_settings):
-                    body, document_title = client_xhtml_generator.generate(
-                        self.zone_manager, self.pdf_document, xhtml_profile, id_prefix, str(images_dir),
-                        image_prefix=output_mgr.image_prefix,
-                        index_hierarchy_tags=self.active_profile.get("index_hierarchy_tags"))
-        except client_xhtml_generator.ClientProfileNotConfigured as e:
-            messagebox.showerror("Generate XHTML", str(e))
-            return
-        except Exception as e:
-            messagebox.showerror("Generate XHTML", f"Failed to build the Client XHTML document:\n{e}")
-            return
-
-        html_root = xhtml_writer.build_xhtml_document(body, title=document_title)
-        validation_errors = xhtml_writer.validate_xhtml(html_root, str(images_dir))
-        # Content-loss check (spec sections 40/41/61/75) - same reused,
-        # format-agnostic function as Generate XML/Generate XHTML above.
-        content_loss_warning = validation.check_content_loss(self.zone_manager, html_root)
-        if content_loss_warning:
-            validation_errors = list(validation_errors) + [content_loss_warning]
-        try:
-            xhtml_writer.write_xhtml(html_root, str(xhtml_path))
-        except Exception as e:
-            messagebox.showerror("Generate XHTML", f"Failed to write XHTML:\n{e}")
-            return
-
-        self.set_status(f"Generated {xhtml_path}")
-        # Generation summary (spec Part 20's field list) - the fields that
-        # are actually meaningful for this pipeline; Client XHTML has no
-        # Mapping.xml apply_errors/generator.warnings equivalent (there's
-        # no Mapping.xml step at all), so only real validation_errors are
-        # reported, never a fabricated warnings list.
-        detected_key = xhtml_profile_manager.suggest_profile_key(str(self.pdf_path or "")) or "-"
-        summary = (
-            f"File: {os.path.basename(self.pdf_path or prefix)}\n"
-            f"Detected: {detected_key}\n"
-            f"Selected: {xhtml_profile.get('label', profile_key)}\n"
-            f"Generator: Client XHTML\n"
-            f"Zones: {len(self.zone_manager.zones)}\n"
-            f"Output: {xhtml_path}"
-        )
-        if validation_errors:
-            shown = "\n".join(f"- {p}" for p in validation_errors[:20])
-            messagebox.showwarning("Generate XHTML - completed with warnings", summary + "\n\nWarnings:\n" + shown)
-        else:
-            messagebox.showinfo("Generate XHTML", summary)
-
-    def generate_xhtml(self):
-        """PDF -> zoning -> EPUB intermediate XML -> Mapping.xml transform
-        -> XHTML + images/ (spec section 7/20). Writes to its own isolated
-        output/{prefix}/{prefix}.xhtml + output/{prefix}/images/ (see
-        core.component_output.ComponentOutputManager) - completely
-        separate from Generate XML's output/{prefix}.xml + top-level
-        assets/ (XML/BITS profile, untouched by this spec), so the two can
-        never corrupt each other, and a failure here never touches the
-        existing XML output.
-
-        "Client XHTML" Generation Type (spec Part 9-12) branches off
-        entirely to _generate_client_xhtml() before any of the code below
-        runs - the existing Mapping.xml pipeline below is otherwise
-        completely UNCHANGED (spec: "the existing CUPEPUB XML generation
-        must remain unchanged - do NOT rewrite"; the same guarantee
-        applies here to the existing EPUB/CUPEPUB XHTML path)."""
-        if self.settings.get("generation_type", "CUPEPUB") == "Client XHTML":
-            self._generate_client_xhtml()
-            return
-        if not self.pdf_document:
-            messagebox.showwarning("Generate XHTML", "Open a PDF first.")
-            return
-        if not self.zone_manager.zones:
-            messagebox.showwarning("Generate XHTML", "No zones to generate from.")
-            return
-        if not self.active_profile.get("xhtml_enabled"):
-            messagebox.showwarning("Generate XHTML", "Switch the Profile to EPUB or CUPEPUB first.")
-            return
-
-        # Partially-zoned-book warning (spec Part 3.3: "if pages are not
-        # zoned, do NOT fabricate pages... display/report zoned vs unzoned
-        # page counts... warn that the project is incomplete instead of
-        # silently generating page 1 only"). A read-only count of DISTINCT
-        # pages that actually have at least one zone - never a claim about
-        # WHICH pages, never a reason to invent content for the rest; the
-        # generator below already walks every page that has real zones
-        # (core.reading_order.compute_page_order iterates every distinct
-        # page present in zone_manager.zones, confirmed empirically -
-        # missing pages were never a code defect in save/load/generate,
-        # just genuinely un-zoned content, which this warns about instead
-        # of a fix pretending to invent zones that were never drawn).
-        if self.page_count:
-            zoned_pages = {z.page for z in self.zone_manager.zones.values()}
-            unzoned_count = self.page_count - len(zoned_pages)
-            if unzoned_count > 0:
-                if not messagebox.askyesno(
-                        "Incomplete Zoning",
-                        f"PDF pages: {self.page_count}\n"
-                        f"Zoned pages: {len(zoned_pages)}\n"
-                        f"Unzoned pages: {unzoned_count}\n\n"
-                        "Generating now will produce XHTML for only the zoned pages - "
-                        "no content will be fabricated for the rest.\n\n"
-                        "Generate XHTML anyway?"):
-                    return
-
-        # Verification soft gate (core/verification/) - a SOFT, OPT-IN check:
-        # this only ever triggers when the operator has actually opened the
-        # Verify window for THIS project (self.verification_session is None
-        # otherwise) and it still has unresolved issues, matching the
-        # explicit backward-compatibility requirement that Generate XHTML
-        # must keep working unchanged for every existing project/workflow
-        # that never touches this new feature.
-        if self.verification_session is not None and not self.verification_session.is_complete():
-            unresolved = self.verification_session.unresolved_count()
-            if not messagebox.askyesno(
-                    "Verification Incomplete",
-                    f"{unresolved} verification issue(s) are still unresolved.\n\n"
-                    "Generate XHTML anyway? (Choose No to return and finish reviewing.)"):
-                return
-
-        # General structural validation (spec: "validate_logical_structure()
-        # - orphan split fragments, conflicting parents, broken continuation
-        # chains... before generating XHTML") - the SAME check Generate XML
-        # already runs, previously never wired into this path at all. Kept
-        # separate from CUPEPUB's own mandatory-zone check below (a
-        # different, profile-specific concern), both blocking before any
-        # output is built.
-        self._repair_broken_merges()
-        errors = validation.validate(self.zone_manager, self.active_profile.get("page_marker_tags"),
-                                       self.active_profile.get("footnote_flow_tags"),
-                                       self.active_profile.get("non_flow_tags"))
-        self._refresh_overlap_highlight(self.active_profile.get("page_marker_tags"))
-        if errors:
-            messagebox.showerror("Generate XHTML", "Fix these issues before generating:\n\n" + "\n".join(errors[:20]))
-            return
-
-        # CUPEPUB only (cup_mandatory_zones is absent/empty for XML/EPUB) -
-        # CUPEPUB_ZoneValidation.xml's Mandatory="true" list, checked before
-        # any output is built (spec section 20/81).
-        mandatory = self.active_profile.get("cup_mandatory_zones")
-        if mandatory:
-            issues = cup_validation.validate_mandatory_zones(
-                self.zone_manager, mandatory, self.active_profile.get("cup_mandatory_meta"),
-                self.active_profile.get("cup_pagenum_name"))
-            if issues:
-                messagebox.showerror("Generate XHTML", "Fix these issues before generating:\n\n" + "\n".join(issues))
-                return
-
-
-        # Prevent double-generation (spec 31: "do not start multiple
-        # competing generators... disable the button while generation is
-        # active"). Everything ABOVE this point is fast reads or a
-        # genuinely blocking user dialog (Verification soft-gate, Hyphen
-        # Review) and stays on the main thread exactly as before;
-        # everything BELOW (build/transform/write) is the real, sometimes
-        # slow work that used to freeze the UI - moved to a background
-        # thread, mirroring the EXACT threading.Thread + queue.Queue +
-        # self.root.after(...) polling pattern ocr_entire_document/
-        # _poll_ocr_document_job already use elsewhere in this file, not
-        # a new/second threading mechanism.
-        if getattr(self, "_xhtml_generation_running", False):
-            return
-        self._xhtml_generation_running = True
-        self._set_xhtml_generation_ui_enabled(False)
-        self.set_status("Generating XHTML...")
-
-        result_queue = queue.Queue()
-
-        def worker():
-            try:
-                result = self._build_and_write_xhtml()
-                result_queue.put(("ok", result))
-            except Exception as exc:  # noqa: BLE001 - surfaced to the operator, never crashes/freezes the app
-                result_queue.put(("error", exc))
-
-        threading.Thread(target=worker, daemon=True).start()
-        self.root.after(150, lambda: self._poll_xhtml_generation(result_queue))
-
-    def _build_and_write_xhtml(self) -> dict:
-        """The actual generation work (spec section 29's own real fix) -
-        runs on a BACKGROUND thread. Reads self.zone_manager/self.
-        pdf_document/self.active_profile/self.settings (read-only from
-        this thread's own perspective - no zoning mutation ever happens
-        here, so it's safe alongside the main thread continuing to
-        render/redraw) and returns a plain dict the main-thread poller
-        uses to build the final summary dialog - never touches any Tk
-        widget itself, since Tkinter widgets are not thread-safe. Any
-        exception here propagates to the caller's own try/except and is
-        surfaced via messagebox on the main thread instead - never left
-        to crash the worker thread silently or freeze the app."""
-        mapping_path = self.settings.get("mapping_xml_path") or self.active_profile.get("mapping_xml_path", "")
-        engine = MappingEngine(mapping_path)
-        engine.load()  # MappingLoadError propagates to the worker's own try/except in generate_xhtml
-
-        prefix = self.settings.get("prefix", "document")
-        # Element-ID prefix is the SHORT, final-underscore-component form
-        # ("bm3"), derived on demand - the OUTPUT filename/folder below
-        # keeps the FULL prefix ("23_980AR_bm3") unchanged (spec: "ZONETOOL
-        # - MASTER PRODUCTION FIX" sections 2-4/44/74/76 - "Filename and ID
-        # prefix are TWO DIFFERENT things" / "Do NOT rename it to
-        # bm3.xhtml"). See core.component_output.derive_id_prefix.
-        id_prefix = component_output.derive_id_prefix(prefix)
-        component_type = self.settings.get("epub_component_type") or \
-            self.active_profile.get("default_component_type", "chapter")
-        # Output-folder-naming spec: one shared output/{output_folder_name}/
-        # folder for the WHOLE PDF project, with a single shared images/
-        # subfolder - every component (frontmatter section, chapter, ...)
-        # generated from this PDF writes into this SAME folder, never its
-        # own isolated one. Recomputed fresh from settings on every Generate
-        # click, so reopening a project always recalculates the same
-        # deterministic layout rather than depending on any prior run's
-        # paths. Falls back to this component's own prefix only for a
-        # project saved before output_folder_name existed.
-        output_folder_name = self.settings.get("output_folder_name") or prefix
-        output_mgr = ComponentOutputManager(APP_ROOT / "output" / output_folder_name, prefix)
-        output_mgr.ensure_dirs()
-        images_dir = output_mgr.images_dir
-        xhtml_path = output_mgr.xhtml_path
-
-        generator = EpubXmlGenerator(
-            self.zone_manager, self.pdf_document, str(images_dir), id_prefix, self.active_profile,
-            component_type=component_type, jpeg_quality=self.settings.get("jpeg_quality", 95),
-            image_dpi=self.settings.get("image_dpi", 200),
-            remove_image_background=self.settings.get("remove_image_background", False),
-            image_prefix=output_mgr.image_prefix)
-        # Generation is CACHE-ONLY: it may read prepared OCR results, but it
-        # is forbidden from starting a new OCR run. Prepare OCR Cache is the
-        # only workflow that creates OCR data.
-        with ocr_service.generation_cache_only_scope():
-            with text_extractor.generation_ocr_cache_scope(self.ocr_cache, self.ocr_settings):
-                intermediate_root = generator.generate()
-
-        # CUPEPUB only (cup_character_map is {} for XML/EPUB, so this is a
-        # no-op for them) - CUPEPUB_Character.xml's font Find/Replace rules,
-        # applied to every extracted text run before Mapping.xml runs.
-        char_map = self.active_profile.get("cup_character_map")
-        if char_map:
-            cup_config.apply_character_map(intermediate_root, char_map)
-
-        # CUPEPUB only: Tag Normalization of inline formatting (merge
-        # identical adjacent ranges, drop empty/duplicate formatting, keep
-        # separate ranges separate, text guaranteed unchanged) - see
-        # core/tag_normalizer.py.
-        if self.active_profile.get("name") == "CUPEPUB":
-            tag_normalizer.normalize_tree(intermediate_root)
-
-        # apply() can replace the root element entirely (e.g. <component
-        # type="chapter"> -> <body><section>...) - the returned value is
-        # authoritative, NOT the object passed in.
-        intermediate_root = engine.apply(intermediate_root)
-
-        # Mapping.xml's own sec0-sec6/ssec/bssec wrapper names (TOC/footnote/
-        # endnote/glossary/acknowledgments/bibliography/exercise rules) are
-        # intermediate authoring names, never valid final XHTML elements -
-        # renamed to <section> before ID assignment so they're picked up
-        # by it too.
-        xhtml_writer.rename_internal_wrapper_tags(intermediate_root)
-        generator.promote_maintitle_to_h1(intermediate_root)
-        generator.assign_missing_ids(intermediate_root)
-        # Bibliography reference-label IDs (spec: "Fix ONLY Bibliography
-        # Reference ID Generation") - Mapping.xml's own //ref_d | //ref_n
-        # rule never adds one; isolated from assign_missing_ids's own
-        # counters/id formats by design (see the method's own docstring).
-        generator.assign_biblioentry_reflabel_ids(intermediate_root)
-
-        # Document title = the logical maintitle/title heading whenever the
-        # document actually has one (spec: "If maintitle exists, NEVER use
-        # the filename as <title>"); absent that, a generic label derived
-        # from the selected Content Type ("Index", "Preface", ...) - spec:
-        # "ZONETOOL - MASTER PRODUCTION FIX" sections 5/71/72, "<title>
-        # Index</title>", never "<title>27_63802_bm3</title>". The raw
-        # (short) id_prefix is only the LAST resort, for a component type
-        # with no sensible generic label at all.
-        document_title = (generator.extract_document_title(intermediate_root)
-                           or generator.default_title_for_component_type(component_type)
-                           or id_prefix)
-        html_root = xhtml_writer.build_xhtml_document(intermediate_root, title=document_title)
-        validation_errors = xhtml_writer.validate_xhtml(html_root, str(images_dir))
-        # Content-loss check (spec: "ZONETOOL - MASTER..." sections 40/41/
-        # 61/75 - "compare source/zoned text count vs generated XHTML text
-        # count... report... do not silently produce incomplete XHTML") -
-        # reuses the SAME function Generate XML already runs (core.
-        # validation.check_content_loss is format-agnostic - it only reads
-        # xml_root_element.itertext(), so it works identically against this
-        # XHTML tree), never a second, separately-maintained loss-detection
-        # engine. Non-blocking, exactly like Generate XML's own use of it -
-        # shown alongside the other warnings below, never a hard stop.
-        content_loss_warning = validation.check_content_loss(self.zone_manager, html_root)
-
-        # Atomic output (spec 32: "generate to temporary output -> validate
-        # -> replace final output... do not overwrite the previous valid
-        # output until generation succeeds") - write to a temp path in the
-        # SAME directory (so the final os.replace is a same-filesystem
-        # rename, not a copy that could itself fail partway) and only
-        # replace the real xhtml_path once writing succeeds completely, so
-        # a failed/partial write can never corrupt or half-overwrite the
-        # previous valid output.
-        tmp_path = str(xhtml_path) + ".tmp"
-        xhtml_writer.write_xhtml(html_root, tmp_path)
-        os.replace(tmp_path, str(xhtml_path))
-
-        return {
-            "xhtml_path": xhtml_path, "generator": generator, "engine": engine,
-            "validation_errors": validation_errors, "content_loss_warning": content_loss_warning,
-        }
-
-    def _poll_xhtml_generation(self, result_queue):
-        """Main-thread poller for the background worker started by
-        generate_xhtml - mirrors _poll_ocr_document_job's own polling
-        shape exactly. Re-enables the Generate XHTML button/menu item and
-        clears the running flag whichever way the job ends (success,
-        failure, exception), so a crash in the worker can never leave the
-        UI permanently disabled or the app looking frozen."""
-        try:
-            kind, payload = result_queue.get_nowait()
-        except queue.Empty:
-            self.root.after(150, lambda: self._poll_xhtml_generation(result_queue))
-            return
-        self._xhtml_generation_running = False
-        self._set_xhtml_generation_ui_enabled(True)
-        if kind == "error":
-            messagebox.showerror("Generate XHTML", f"XHTML generation failed:\n{payload}")
-            self.set_status("XHTML generation failed")
-            return
-
-        result = payload
-        xhtml_path = result["xhtml_path"]
-        generator, engine = result["generator"], result["engine"]
-        validation_errors = result["validation_errors"]
-        content_loss_warning = result["content_loss_warning"]
-
-        self.set_status(f"Generated {xhtml_path}")
-        summary = f"XHTML written to:\n{xhtml_path}\n\nImages: {sum(generator.assets.counters.values())}"
-        pagenum_name = self.active_profile.get("cup_pagenum_name")
-        if pagenum_name:
-            pagenum_zones = [z for z in self.zone_manager.zones.values()
-                              if z.attributes.get("cup_name") == pagenum_name]
-            if pagenum_zones:
-                empty = sum(1 for z in pagenum_zones if not (z.text or "").strip())
-                summary += (f"\n\nPageNum zones:\nTotal: {len(pagenum_zones)}  "
-                            f"Valid: {len(pagenum_zones) - empty}  Empty/skipped: {empty}")
-        problems = list(generator.warnings) + list(engine.apply_errors) + validation_errors
-        if content_loss_warning:
-            problems.append(content_loss_warning)
-        if problems:
-            shown = "\n".join(f"- {p}" for p in problems[:20])
-            more = f"\n... and {len(problems) - 20} more" if len(problems) > 20 else ""
-            messagebox.showwarning("Generate XHTML - completed with warnings",
-                                    summary + "\n\nWarnings:\n" + shown + more)
-        else:
-            messagebox.showinfo("Generate XHTML", summary)
-
-    def _set_xhtml_generation_ui_enabled(self, enabled: bool):
-        """Prevents double-generation (spec 31) by disabling the toolbar's
-        own Generate XHTML button for the duration of a background job -
-        re-enabled by _poll_xhtml_generation whichever way the job ends."""
-        state = "normal" if enabled else "disabled"
-        btn = getattr(self.toolbar, "generate_xhtml_btn", None)
-        if btn is not None:
-            try:
-                btn.config(state=state)
-            except Exception:  # noqa: BLE001 - a UI-refresh nicety, never worth crashing generation over
-                pass
 
     # ---------------- status ----------------
     def set_status(self, message: str = None):

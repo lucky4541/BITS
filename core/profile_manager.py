@@ -1,13 +1,12 @@
-"""Loads Profile configuration (profiles/*.json) - the external, config-driven
-tag/image/mapping definitions that the Profile dropdown (toolbar) switches
-between. XML profile behavior is a pure ADDITION on top of the existing,
-untouched core/constants.py: if profiles/xml_profile.json is missing or
-fails to parse, get_profile("XML") falls back to a profile built directly
-from constants.TAG_BUTTONS/DEFAULT_TAG_COLORS, so the existing app can never
-regress just because a JSON file got deleted or corrupted. EPUB has no such
-hardcoded fallback - profiles/epub_profile.json is the only source for it,
-per the spec's "must NOT be hard-coded" requirement.
-"""
+"""Loads the zoning profiles (profiles/*_profile.json) the Profile dropdown
+switches between:
+
+    BITS  profiles/bits_profile.json - BITS 2.2 book tags
+    JATS  profiles/jats_profile.json - JATS 1.4 article tags
+
+Both files are generated from core/bits/vocabulary.py (python -m
+core.bits.vocabulary) and may be edited by hand; when one is missing or
+invalid the built-in vocabulary is used, so the app always starts."""
 import json
 import os
 
@@ -15,45 +14,7 @@ from core.resource_path import resource_path
 
 PROFILES_DIR = resource_path("profiles")
 
-DEFAULT_PROFILE_NAME = "XML"
-
-
-def _fallback_xml_profile() -> dict:
-    from core.constants import TAG_BUTTONS, DEFAULT_TAG_COLORS, TAG_PAGENUMBER, NON_FLOW_TAGS
-    return {
-        "name": "XML",
-        "xml_enabled": True,
-        "xhtml_enabled": False,
-        "root_tag": "book",
-        "tag_buttons": [{"label": label, "tag": tag, "attrs": dict(attrs)} for label, tag, attrs in TAG_BUTTONS],
-        "tag_colors": dict(DEFAULT_TAG_COLORS),
-        "image_kinds": {},
-        "component_types": [],
-        "mapping_xml_path": "",
-        # Merge Previous's "find previous compatible content" search
-        # (core/zone_manager.py._find_previous_in_reading_order) always
-        # skips these tags over rather than treating them as a blocker -
-        # matches the literal "pagenumber" tag check hardcoded before this
-        # was generalized, so XML profile behavior is unchanged.
-        "page_marker_tags": [TAG_PAGENUMBER],
-        "footnote_flow_tags": [],
-        # Merge Previous / automatic continuation's "an image/figure/
-        # equation must not block a continuation search" skip-list (spec:
-        # "EPUBForge - Global Merge, Continuation, Reading Order and Exact
-        # Text Preservation Engine") - the XML profile's own tag_buttons
-        # don't use the asset_kind convention EPUB/CUPEPUB rely on (see
-        # core/constants.py's NON_FLOW_TAGS docstring), so this is declared
-        # explicitly here, matching page_marker_tags's own precedent.
-        "non_flow_tags": sorted(NON_FLOW_TAGS),
-        # XML/BITS has no multi-level Index Primary/Secondary/Territory
-        # hierarchy (core/constants.py's own TAG_BUTTONS has no such tags -
-        # confirmed by inspection; the XML profile's own "Index Entry" is a
-        # single flat tag) - empty here (not the 3-level default other
-        # profiles get) so gui/zone_panel.py's Auto Zone Index button, whose
-        # visibility is tied to these tags actually being in the toolbox,
-        # never appears for this profile at all.
-        "index_hierarchy_tags": {},
-    }
+DEFAULT_PROFILE_NAME = "BITS"
 
 
 _cache: dict[str, dict] = {}
@@ -64,11 +25,8 @@ def _profile_path(name: str) -> str:
 
 
 def list_profile_names() -> list[str]:
-    """Fixed, known order (not a directory listing) - matches the spec's
-    "Profile: [ XML | EPUB | CUPEPUB ]" dropdown exactly. Extending profiles/
-    with a new *_profile.json (or, for CUPEPUB, a new build_*_profile()
-    function) in the future just needs its name added here."""
-    return ["XML", "EPUB", "CUPEPUB"]
+    """BITS (BITS 2.2 book) and JATS (JATS 1.4 journal article)."""
+    return ["BITS", "JATS"]
 
 
 def load_profile(name: str) -> dict:
@@ -78,21 +36,14 @@ def load_profile(name: str) -> dict:
     ProfileLoadError with a clear message on missing/invalid JSON for any
     profile OTHER than XML (which has the constants.py fallback above).
 
-    CUPEPUB is NOT a static JSON file - per spec, its tag list/shortcuts/
-    mapping must be read live from profiles/CUPEPUB/*.xml (see
-    core/cup_config.py), so it's synthesized fresh on every call here
-    instead of read from a *_profile.json path."""
-    if name.strip().upper() == "CUPEPUB":
-        from core import cup_config
-        try:
-            return cup_config.build_cup_profile()
-        except cup_config.CupConfigError as e:
-            raise ProfileLoadError(str(e))
+    BITS / JATS fall back to the built-in vocabulary (core.bits.vocabulary)
+    when their JSON file is missing."""
     path = _profile_path(name)
     rel_name = f"profiles/{os.path.basename(path)}"
     if not os.path.isfile(path):
-        if name.strip().upper() == DEFAULT_PROFILE_NAME:
-            return _fallback_xml_profile()
+        if name.strip().upper() in ("BITS", "JATS"):
+            from core.bits import vocabulary
+            return vocabulary.profile(name.strip().upper())
         # A clean, package-relative resource name only - never the raw
         # resolved absolute path (which, in a packaged build, is a
         # confusing internal bundle/extraction path with no meaning to an
@@ -102,16 +53,17 @@ def load_profile(name: str) -> dict:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
     except (OSError, json.JSONDecodeError) as e:
-        if name.strip().upper() == DEFAULT_PROFILE_NAME:
-            return _fallback_xml_profile()
+        if name.strip().upper() in ("BITS", "JATS"):
+            from core.bits import vocabulary
+            return vocabulary.profile(name.strip().upper())
         raise ProfileLoadError(f"Could not parse {rel_name}: {e}")
     data.setdefault("tag_buttons", [])
     data.setdefault("tag_colors", {})
     data.setdefault("image_kinds", {})
     data.setdefault("component_types", [])
     data.setdefault("mapping_xml_path", "")
-    data.setdefault("xml_enabled", name.strip().upper() == DEFAULT_PROFILE_NAME)
-    data.setdefault("xhtml_enabled", name.strip().upper() != DEFAULT_PROFILE_NAME)
+    data.setdefault("xml_enabled", True)
+    data.setdefault("xhtml_enabled", False)
     data.setdefault("root_tag", "book")
     # Merge Previous's "find previous compatible content" search (core/
     # zone_manager.py) - empty by default so a profile that doesn't

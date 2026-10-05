@@ -94,7 +94,15 @@ BLOCK_TAGS = {
     "h1", "h2", "h3", "h4", "h5", "h6",
     "td", "th", "caption", "figcaption",
     "pre", "address", "section", "article",
+    # BITS / JATS
+    "title", "subtitle", "label", "book-title", "article-title", "mixed-citation", "element-citation",
+    "term", "def", "verse-line", "preformat", "aff", "contrib", "copyright-statement", "isbn",
+    "publisher-name", "kwd", "attrib", "speaker",
 }
+XML_ROOTS = {"book", "article", "book-part-wrapper"}
+# BITS / JATS metadata that is never printed in the PDF text flow
+XML_SKIP = {"journal-meta", "copyright-year", "copyright-holder", "object-id", "book-id", "article-id",
+            "custom-meta-group"}
 
 STYLE_PROPERTIES = (
     "bold",
@@ -727,7 +735,7 @@ def source_items(path):
         if (
             f.is_file()
             and f.suffix.lower()
-            in {".xhtml", ".html", ".htm"}
+            in {".xhtml", ".html", ".htm", ".xml"}
         ):
             yield str(f), f.read_bytes()
 
@@ -860,10 +868,13 @@ def extract_xhtml_tokens(path):
 
         body = None
 
-        for node in root.iter():
-            if local_name(node.tag) == "body":
-                body = node
-                break
+        if local_name(root.tag) in XML_ROOTS:
+            body = root            # BITS / JATS: the whole document, metadata included
+        else:
+            for node in root.iter():
+                if local_name(node.tag) == "body":
+                    body = node
+                    break
 
         if body is None:
             continue
@@ -876,6 +887,8 @@ def extract_xhtml_tokens(path):
             nonlocal paragraph_count
 
             tag = local_name(node.tag)
+            if tag in XML_SKIP or not tag:
+                return
             attrs = dict(
                 getattr(node, "attrib", {}) or {}
             )
@@ -889,13 +902,13 @@ def extract_xhtml_tokens(path):
                 ),
             )
 
-            if tag in {"b", "strong"}:
+            if tag in {"b", "strong", "bold"}:
                 style["bold"] = True
 
-            if tag in {"i", "em"}:
+            if tag in {"i", "em", "italic"}:
                 style["italic"] = True
 
-            if tag == "u":
+            if tag in {"u", "underline"}:
                 style["underline"] = True
 
             if tag == "sup":

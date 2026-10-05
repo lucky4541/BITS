@@ -1,5 +1,5 @@
 """Detailed, multi-stage VALIDATION REPORT for an auto-zoned / auto-tagged
-project (CUPEPUB).
+project (BITS / JATS).
 
 Stages:
   1. text integrity        - page text not covered by any zone; zones whose
@@ -18,7 +18,7 @@ Stages:
                              DTD for its root exists)
   9. reference patterns    - successions the reference corpus never shows,
                              Mapping.xml family members with no family
-                             neighbour, CUPEPUB mandatory zone rules
+                             neighbour
 """
 import json
 import re
@@ -228,7 +228,7 @@ def run(zone_manager, pdf_document, profile: dict, knowledge=None, generated_roo
                         report.add("attributes", "error", f"<{el.tag}> is missing required attribute "
                                    f"'{attr.name}'")
     elif not dtds:
-        report.add("dtd", "info", "no DTD found for this profile (profiles/CUPEPUB/*.dtd) - DTD stages skipped")
+        report.add("dtd", "info", "no DTD found for this profile (profiles/<profile>/dtd) - DTD stages skipped")
 
     # ---------------------------------------------------- 9. patterns
     if knowledge is not None:
@@ -242,13 +242,4 @@ def run(zone_manager, pdf_document, profile: dict, knowledge=None, generated_roo
                 for reason in verdict.reasons:
                     if "never" in reason or "no image" in reason or "may not" in reason:
                         report.add("patterns", "warning", reason, zone=z)
-    if profile.get("cup_mandatory_zones"):
-        try:
-            from core import cup_validation
-            for msg in cup_validation.validate_mandatory_zones(
-                    zone_manager, profile.get("cup_mandatory_zones"), profile.get("cup_mandatory_meta"),
-                    profile.get("cup_pagenum_name")):
-                report.add("patterns", "warning", str(msg))
-        except Exception as e:  # noqa: BLE001
-            report.add("patterns", "info", f"mandatory-zone check unavailable: {e}")
     return report

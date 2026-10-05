@@ -183,11 +183,12 @@ SPLIT_CHILD_CHOICES = {
 # equation, list, boxed-text, title-group, ...) each zone in the chain is
 # still generated normally/independently, just flagged+colored as merged.
 TEXT_MERGE_TAGS = {TAG_P, TAG_TITLE, TAG_SUBTITLE, TAG_LABEL, TAG_CAPTION, TAG_LIST_ITEM, TAG_REFERENCE} | set(HEADING_TAGS)
-# CUPEPUB reference entries (CUPLookup.xml: Ref_N -> "ref_n", Ref_D ->
-# "ref_d"; Mapping.xml turns each into <li class="biblioentry">). A
-# reference that runs across lines/pages and is zoned in pieces must come
-# out as ONE entry when the pieces are joined with Merge Previous.
-TEXT_MERGE_TAGS |= {"ref_n", "ref_d"}
+# BITS / JATS text zones (core/bits/vocabulary.py TEXT_TAGS): a footnote,
+# quote, abstract ... that runs across lines/pages and is zoned in pieces
+# comes out as ONE element when the pieces are joined with Merge Previous.
+TEXT_MERGE_TAGS |= {"disp-quote", "epigraph", "verse-line", "speech", "statement", "preformat", "term", "def",
+                    "fn", "en", "abstract", "kwd", "book-title", "book-subtitle", "article-title", "contrib",
+                    "chapter-contrib", "aff", "copyright-statement", "index-entry", "corresp", "author-note", "history"}
 
 # Tags that are document BACK MATTER, never body content - a Bibliography
 # zone (-> <ref-list>) or a standalone Reference zone/chain. Used by

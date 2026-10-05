@@ -10,10 +10,9 @@ only changes layout/styling, never behavior (spec 66.32)."""
 import tkinter as tk
 from tkinter import ttk
 
-from core import profile_manager, xhtml_profile_manager, generation_types
+from core import profile_manager
 from gui import theme
 
-GENERATION_TYPES = ["CUPEPUB", "XHTML-EPUB", "Client XHTML"]
 
 
 class Toolbar(tk.Frame):
@@ -148,10 +147,9 @@ class Toolbar(tk.Frame):
         self.file_menu.add_separator()
         self.file_menu.add_command(label="Settings", command=app.open_settings)
         self.file_menu.add_command(label="Theme: Toggle Light/Dark", command=app.toggle_theme)
-        self.file_menu.add_command(label="CUPEPUB Config Status...", command=app.show_cup_diagnostics)
         self.file_menu.add_command(label="Help", command=app.show_help)
 
-        btn("Load Project", app.load_project, tooltip="Open a previously saved EPUBForge project")
+        btn("Load Project", app.load_project, tooltip="Open a previously saved BITS tool project")
         sep()
 
         # ---------------- NAVIGATION ----------------
@@ -241,7 +239,7 @@ class Toolbar(tk.Frame):
 
         # ---------------- PROFILE ----------------
         group_label("Profile", parent=row2)
-        self.profile_var = tk.StringVar(value="XML")
+        self.profile_var = tk.StringVar(value=profile_manager.DEFAULT_PROFILE_NAME)
         self.profile_combo = ttk.Combobox(row2, textvariable=self.profile_var,
                                            values=profile_manager.list_profile_names(),
                                            width=9, state="readonly", font=theme.FONT_BODY)
@@ -251,137 +249,23 @@ class Toolbar(tk.Frame):
 
         # ---------------- OUTPUT ----------------
         group_label("Output", parent=row2)
-
-        # "Generation Type" (spec: EPUBForge Part 7) - gates Generate XML
-        # vs Generate XHTML IN ADDITION TO (never instead of) the existing
-        # Profile-driven xhtml_enabled gating above: CUPEPUB enables XML/
-        # disables XHTML (the existing CUPEPUB XML path is untouched by
-        # this - see App.generate_xml), XHTML-EPUB enables XHTML via the
-        # existing unchanged Mapping.xml pipeline, Client XHTML enables
-        # XHTML via the new profiles/xhtml/*.json-driven generator
-        # (core/client_xhtml_generator.py) instead.
-        self.generation_type_var = tk.StringVar(value=app.settings.get("generation_type", "CUPEPUB"))
-        gen_type_combo = ttk.Combobox(row2, textvariable=self.generation_type_var, values=GENERATION_TYPES,
-                                       width=12, state="readonly", font=theme.FONT_BODY)
-        gen_type_combo.pack(side=tk.LEFT, padx=2)
-        gen_type_combo.bind("<<ComboboxSelected>>", lambda e: app.set_generation_type(self.generation_type_var.get()))
-        self._tooltips.append(theme.Tooltip(gen_type_combo, "Generation Type - which output pipeline "
-                                                              "Generate XML/XHTML uses"))
-
-        # "XHTML Profile" (spec Part 8) - the 21 client document-structure
-        # profiles (profiles/xhtml/*.json), only meaningful for Client
-        # XHTML generation - see set_xhtml_profile_enabled.
-        self.xhtml_profile_var = tk.StringVar(value=app.settings.get("xhtml_profile_label", ""))
-        self._xhtml_profile_labels = {}  # label -> key
-        self.xhtml_profile_combo = ttk.Combobox(row2, textvariable=self.xhtml_profile_var,
-                                                  width=16, state="readonly", font=theme.FONT_BODY)
-        self.xhtml_profile_combo.pack(side=tk.LEFT, padx=2)
-        self.xhtml_profile_combo.bind("<<ComboboxSelected>>",
-                                       lambda e: app.set_xhtml_profile(self._xhtml_profile_labels.get(
-                                           self.xhtml_profile_var.get())))
-        self._tooltips.append(theme.Tooltip(self.xhtml_profile_combo,
-                                             "XHTML Profile - document structure for Client XHTML generation"))
-        self.refresh_xhtml_profiles()
-        sep(parent=row2)
-
-        # ---------------- TYPE ----------------
-        # (spec: "EPUBForge - TYPE Dropdown, CUPEPUB Output Behavior") - a
-        # content/generation-structure selector, DISTINCT from the "XHTML
-        # Profile" dropdown above (which is Client-XHTML-only). Reuses the
-        # EXISTING component_type concept (core.profile_manager's per-
-        # profile component_types, already read by App.generate_xhtml()/
-        # generate_xml() as settings["epub_component_type"]) - see core/
-        # generation_types.py's own docstring. Always enabled, and
-        # deliberately NEVER a precondition for Generate XHTML - see
-        # App.update_generation_controls(), the single function that
-        # decides Generate XML/XHTML state from Profile + Output only.
-        group_label("Type", parent=row2)
-        self._HEADER_PREFIX = "── "  # "── FRONT MATTER ──" - a non-selectable-looking group header
-        self.SELECT_TYPE_PLACEHOLDER = "Select Type"
-        self.type_var = tk.StringVar(value=self.SELECT_TYPE_PLACEHOLDER)
-        self._type_display_to_key = {}  # display label -> real component_type key (None for the placeholder)
-        self.type_combo = ttk.Combobox(row2, textvariable=self.type_var, width=18,
-                                        state="readonly", font=theme.FONT_BODY)
-        self.type_combo.pack(side=tk.LEFT, padx=2)
-        self.type_combo.bind("<<ComboboxSelected>>", self._on_type_selected)
-        self._tooltips.append(theme.Tooltip(
-            self.type_combo, "Type - optional content-structure configuration for generation. "
-                               "Leaving this as \"Select Type\" does not block Generate XHTML."))
-
+        self.output_label = tk.Label(row2, text="Output: BITS XML", font=theme.FONT_BODY)
+        self.output_label.pack(side=tk.LEFT, padx=2)
         self.generate_xml_btn = btn("Generate XML", app.generate_xml, parent=row2, kind="primary",
-                                     tooltip="Generate BITS-style XML from the current zoning")
+                                     tooltip="Generate BITS 2.2 (book) or JATS 1.4 (article) XML from the current "
+                                             "zoning - validated against the DTD and auto-fixed safely")
         self.verify_btn = btn("Verify", app.open_verification_window, parent=row2, kind="secondary",
                                tooltip="Review OCR/extraction accuracy, formatting, spelling, and grammar "
-                                        "before generating XHTML (optional - existing workflow is unaffected "
-                                        "unless you open this)")
-        self.generate_xhtml_btn = btn("Generate XHTML", app.generate_xhtml, parent=row2, kind="primary",
-                                       tooltip="Generate XHTML via Mapping.xml (EPUB/CUPEPUB) or, in Client "
-                                                "XHTML mode, via the selected XHTML Profile")
-        # Initial enable/disable state is NOT computed here: `app.toolbar`
-        # doesn't exist yet at this point (we're still inside its own
-        # constructor) - App.__init__ calls self.set_profile(...) itself
-        # immediately after constructing this Toolbar, which calls
-        # App.update_generation_controls() and establishes the real
-        # initial state exactly once, never duplicated here.
+                                        "before generating XML (optional)")
+        # Initial enable/disable state is NOT computed here: App.__init__
+        # calls self.set_profile(...) itself immediately after constructing
+        # this Toolbar, which calls App.update_generation_controls().
 
-    def _on_type_selected(self, _event=None):
-        """A category header ("── FRONT MATTER ──") is present in the
-        dropdown's own values list purely for visual grouping - ttk.
-        Combobox has no native optgroup concept, so headers are plain,
-        technically-selectable strings; selecting one is treated as a
-        no-op (reverts to the placeholder) rather than a real Type choice."""
-        selected = self.type_var.get()
-        if selected.startswith(self._HEADER_PREFIX):
-            self.type_var.set(self.SELECT_TYPE_PLACEHOLDER)
-            return
-        key = self._type_display_to_key.get(selected)  # None for the placeholder itself
-        self.app.set_generation_component_type(key)
-
-    def refresh_type_dropdown(self, component_types: list):
-        """Rebuilds the TYPE dropdown for the ACTIVE profile's own
-        component_types (spec: "Update available TYPE values" on every
-        Profile change) - grouped FRONT MATTER / BODY / BACK MATTER per
-        core.generation_types.available_types. Never disturbs the
-        currently-selected value if it's still valid for the new list;
-        falls back to the placeholder otherwise (e.g. switching to a
-        profile that doesn't declare the previously-selected type)."""
-        current_key = self._type_display_to_key.get(self.type_var.get())
-        grouped = generation_types.available_types(component_types)
-        values = [self.SELECT_TYPE_PLACEHOLDER]
-        self._type_display_to_key = {self.SELECT_TYPE_PLACEHOLDER: None}
-        still_valid_display = self.SELECT_TYPE_PLACEHOLDER
-        for category, entries in grouped:
-            values.append(f"{self._HEADER_PREFIX}{category} {self._HEADER_PREFIX}")
-            for key, label in entries:
-                values.append(label)
-                self._type_display_to_key[label] = key
-                if key == current_key:
-                    still_valid_display = label
-        self.type_combo.config(values=values)
-        self.type_var.set(still_valid_display)
+    def set_output_label(self, text: str):
+        self.output_label.config(text=text)
 
     def set_xml_enabled(self, enabled: bool):
         self.generate_xml_btn.config(state="normal" if enabled else "disabled")
-
-    def set_xhtml_enabled(self, enabled: bool):
-        self.generate_xhtml_btn.config(state="normal" if enabled else "disabled")
-
-    def set_xhtml_profile_combo_enabled(self, enabled: bool):
-        self.xhtml_profile_combo.config(state="readonly" if enabled else "disabled")
-
-    def refresh_xhtml_profiles(self):
-        """Rebuilds the XHTML Profile dropdown from profiles/xhtml/*.json
-        (configured profiles first, then placeholders - matches
-        xhtml_profile_manager.list_profiles's own ordering) - callable
-        again after Settings > XHTML Profiles edits a file."""
-        items = xhtml_profile_manager.list_profiles()
-        self._xhtml_profile_labels = {}
-        display_values = []
-        for key, label, configured in items:
-            display = label if configured else f"{label} (not configured)"
-            self._xhtml_profile_labels[display] = key
-            display_values.append(display)
-        self.xhtml_profile_combo.config(values=display_values)
 
     def set_profile_options(self, profile_name: str):
         """Reflects the active project's saved profile (project load / new

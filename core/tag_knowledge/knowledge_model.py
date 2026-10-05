@@ -94,6 +94,15 @@ class TagKnowledgeModel:
 
         dtds = []
         dtd_dirs = [d for d in [profile_dir, settings.get("auto_tag_dtd_dir")] if d]
+        if (profile.get("name") or "").upper() in ("BITS", "JATS"):
+            # exactly the DTD the output is validated against (core.bits.dtd) -
+            # never every variant in the folder
+            dtd_dirs = [d for d in [settings.get("auto_tag_dtd_dir")] if d]
+            try:
+                from core.bits import dtd as bits_dtd
+                dtds.append(bits_dtd.load(profile["name"].upper(), settings.get("bits_meta") or {}))
+            except Exception as e:  # noqa: BLE001
+                diagnostics.append(f"{profile['name']} DTD: {e}")
         for path in settings.get("auto_tag_dtd_paths", []) or []:
             try:
                 dtds.append(DTDModel.from_file(path))
@@ -117,19 +126,6 @@ class TagKnowledgeModel:
         diagnostics.extend(corpus.errors)
 
         zoning_meta = {}
-        try:
-            if profile.get("name") == "CUPEPUB":
-                from core import cup_config
-                zoning, _ = cup_config.load_zoning()
-                lookup, _diag, _st = cup_config.load_lookup()
-                for cat, items in zoning.items():
-                    for item in items:
-                        meta = dict(item)
-                        meta["category"] = cat
-                        meta["lookup_type"] = (lookup.get(item["name"]) or {}).get("type")
-                        zoning_meta[item["name"]] = meta
-        except Exception as e:  # noqa: BLE001
-            diagnostics.append(f"Zoning metadata: {e}")
 
         learned = (settings.get("auto_tag_learning") or {})
         return cls(profile, lexicon, mapping, dtds, corpus, reference_template, learned, zoning_meta, diagnostics)

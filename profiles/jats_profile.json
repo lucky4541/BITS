@@ -1,0 +1,416 @@
+{
+  "name": "JATS",
+  "description": "JATS 1.4 journal article (front / article-meta, body, back)",
+  "output": "jats-article",
+  "xml_enabled": true,
+  "xhtml_enabled": false,
+  "root_tag": "article",
+  "page_marker_tags": [
+    "pagenumber"
+  ],
+  "footnote_flow_tags": [
+    "fn",
+    "en"
+  ],
+  "non_flow_tags": [
+    "figure",
+    "graphic",
+    "equation"
+  ],
+  "tag_buttons": [
+    {
+      "label": "Article Title",
+      "tag": "article-title",
+      "attrs": {}
+    },
+    {
+      "label": "Subtitle",
+      "tag": "subtitle",
+      "attrs": {}
+    },
+    {
+      "label": "Author",
+      "tag": "contrib",
+      "attrs": {
+        "@contrib-type": "author"
+      }
+    },
+    {
+      "label": "Affiliation",
+      "tag": "aff",
+      "attrs": {}
+    },
+    {
+      "label": "Corresponding Author",
+      "tag": "corresp",
+      "attrs": {}
+    },
+    {
+      "label": "Author Notes",
+      "tag": "author-note",
+      "attrs": {}
+    },
+    {
+      "label": "Abstract",
+      "tag": "abstract",
+      "attrs": {}
+    },
+    {
+      "label": "Keywords",
+      "tag": "kwd",
+      "attrs": {}
+    },
+    {
+      "label": "Received / Accepted dates",
+      "tag": "history",
+      "attrs": {}
+    },
+    {
+      "label": "Copyright",
+      "tag": "copyright-statement",
+      "attrs": {}
+    },
+    {
+      "label": "DOI",
+      "tag": "article-doi",
+      "attrs": {}
+    },
+    {
+      "label": "Heading 1",
+      "tag": "h1",
+      "attrs": {}
+    },
+    {
+      "label": "Heading 2",
+      "tag": "h2",
+      "attrs": {}
+    },
+    {
+      "label": "Heading 3",
+      "tag": "h3",
+      "attrs": {}
+    },
+    {
+      "label": "Heading 4",
+      "tag": "h4",
+      "attrs": {}
+    },
+    {
+      "label": "Heading 5",
+      "tag": "h5",
+      "attrs": {}
+    },
+    {
+      "label": "Heading 6",
+      "tag": "h6",
+      "attrs": {}
+    },
+    {
+      "label": "Title Group",
+      "tag": "title-group",
+      "attrs": {}
+    },
+    {
+      "label": "Title",
+      "tag": "title",
+      "attrs": {}
+    },
+    {
+      "label": "Paragraph",
+      "tag": "p",
+      "attrs": {}
+    },
+    {
+      "label": "Extract / Quote",
+      "tag": "disp-quote",
+      "attrs": {}
+    },
+    {
+      "label": "Epigraph",
+      "tag": "epigraph",
+      "attrs": {}
+    },
+    {
+      "label": "Verse Line",
+      "tag": "verse-line",
+      "attrs": {}
+    },
+    {
+      "label": "Speech",
+      "tag": "speech",
+      "attrs": {}
+    },
+    {
+      "label": "Statement (Theorem...)",
+      "tag": "statement",
+      "attrs": {}
+    },
+    {
+      "label": "Code / Preformat",
+      "tag": "preformat",
+      "attrs": {}
+    },
+    {
+      "label": "Definition Term",
+      "tag": "term",
+      "attrs": {}
+    },
+    {
+      "label": "Definition",
+      "tag": "def",
+      "attrs": {}
+    },
+    {
+      "label": "Label",
+      "tag": "label",
+      "attrs": {}
+    },
+    {
+      "label": "Page Number",
+      "tag": "pagenumber",
+      "attrs": {}
+    },
+    {
+      "label": "List Bullet",
+      "tag": "list-bullet",
+      "attrs": {}
+    },
+    {
+      "label": "List Number",
+      "tag": "list",
+      "attrs": {
+        "list_type": "order"
+      }
+    },
+    {
+      "label": "List Alpha",
+      "tag": "list",
+      "attrs": {
+        "list_type": "alpha-upper"
+      }
+    },
+    {
+      "label": "List Lower Alpha",
+      "tag": "list",
+      "attrs": {
+        "list_type": "alpha-lower"
+      }
+    },
+    {
+      "label": "List Roman",
+      "tag": "list",
+      "attrs": {
+        "list_type": "roman-lower"
+      }
+    },
+    {
+      "label": "List Simple",
+      "tag": "list",
+      "attrs": {
+        "list_type": "simple"
+      }
+    },
+    {
+      "label": "List Item",
+      "tag": "list-item",
+      "attrs": {}
+    },
+    {
+      "label": "Figure",
+      "tag": "figure",
+      "attrs": {}
+    },
+    {
+      "label": "Caption",
+      "tag": "caption",
+      "attrs": {}
+    },
+    {
+      "label": "Graphic",
+      "tag": "graphic",
+      "attrs": {}
+    },
+    {
+      "label": "Equation (display)",
+      "tag": "equation",
+      "attrs": {}
+    },
+    {
+      "label": "Table",
+      "tag": "table",
+      "attrs": {}
+    },
+    {
+      "label": "Table Draw",
+      "tag": "table",
+      "attrs": {}
+    },
+    {
+      "label": "Table Caption",
+      "tag": "table-caption",
+      "attrs": {}
+    },
+    {
+      "label": "Table Wrap Foot",
+      "tag": "table-wrap-foot",
+      "attrs": {}
+    },
+    {
+      "label": "Boxed Text",
+      "tag": "boxed-text",
+      "attrs": {}
+    },
+    {
+      "label": "Boxed Text Start",
+      "tag": "boxed-text-start",
+      "attrs": {}
+    },
+    {
+      "label": "Boxed Text End",
+      "tag": "boxed-text-end",
+      "attrs": {}
+    },
+    {
+      "label": "Footnote",
+      "tag": "fn",
+      "attrs": {}
+    },
+    {
+      "label": "Endnote",
+      "tag": "en",
+      "attrs": {}
+    },
+    {
+      "label": "Bibliography",
+      "tag": "bibliography",
+      "attrs": {}
+    },
+    {
+      "label": "Reference",
+      "tag": "reference",
+      "attrs": {}
+    },
+    {
+      "label": "Acknowledgments Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "ack"
+      }
+    },
+    {
+      "label": "Appendix Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "appendix"
+      }
+    },
+    {
+      "label": "Notes Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "notes"
+      }
+    },
+    {
+      "label": "Glossary Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "glossary"
+      }
+    },
+    {
+      "label": "References Title",
+      "tag": "h1",
+      "attrs": {
+        "part_type": "bibliography"
+      }
+    }
+  ],
+  "tag_groups": [
+    {
+      "label": "Article metadata",
+      "first": "Article Title"
+    },
+    {
+      "label": "Headings",
+      "first": "Heading 1"
+    },
+    {
+      "label": "Text",
+      "first": "Paragraph"
+    },
+    {
+      "label": "Lists",
+      "first": "List Bullet"
+    },
+    {
+      "label": "Figures & tables",
+      "first": "Figure"
+    },
+    {
+      "label": "Boxes",
+      "first": "Boxed Text"
+    },
+    {
+      "label": "Notes & references",
+      "first": "Footnote"
+    },
+    {
+      "label": "Back matter",
+      "first": "Acknowledgments Title"
+    }
+  ],
+  "tag_colors": {
+    "article-title": "#8E24AA",
+    "subtitle": "#8E24AA",
+    "contrib": "#8E24AA",
+    "aff": "#8E24AA",
+    "corresp": "#8E24AA",
+    "author-note": "#8E24AA",
+    "abstract": "#8E24AA",
+    "kwd": "#8E24AA",
+    "history": "#8E24AA",
+    "copyright-statement": "#8E24AA",
+    "article-doi": "#8E24AA",
+    "h1": "#1E88E5",
+    "h2": "#1E88E5",
+    "h3": "#42A5F5",
+    "h4": "#64B5F6",
+    "h5": "#90CAF9",
+    "h6": "#BBDEFB",
+    "title-group": "#1E88E5",
+    "title": "#1E88E5",
+    "p": "#43A047",
+    "disp-quote": "#43A047",
+    "epigraph": "#43A047",
+    "verse-line": "#43A047",
+    "speech": "#43A047",
+    "statement": "#43A047",
+    "preformat": "#43A047",
+    "term": "#43A047",
+    "def": "#43A047",
+    "label": "#43A047",
+    "pagenumber": "#9E9E9E",
+    "list-bullet": "#00897B",
+    "list": "#00897B",
+    "list-item": "#00897B",
+    "figure": "#F4511E",
+    "caption": "#F4511E",
+    "graphic": "#F4511E",
+    "equation": "#F4511E",
+    "table": "#F4511E",
+    "table-caption": "#F4511E",
+    "table-wrap-foot": "#F4511E",
+    "boxed-text": "#6D4C41",
+    "boxed-text-start": "#6D4C41",
+    "boxed-text-end": "#6D4C41",
+    "fn": "#FB8C00",
+    "en": "#FB8C00",
+    "bibliography": "#FB8C00",
+    "reference": "#FB8C00"
+  },
+  "index_hierarchy_tags": {},
+  "image_kinds": {},
+  "component_types": [],
+  "mapping_xml_path": ""
+}

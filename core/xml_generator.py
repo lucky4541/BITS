@@ -566,8 +566,11 @@ def _bbox_excluding_all(outer, excludes):
 class XMLGenerator:
     def __init__(self, zone_manager, pdf_document, assets_dir: str, prefix: str = "document",
                  jpeg_quality: int = 95, root_tag: str = "book", image_dpi: int = None,
-                 remove_image_background: bool = False):
+                 remove_image_background: bool = False, split_back_matter: bool = True):
         self.zm = zone_manager
+        # False: references stay where they are in the reading order (the
+        # BITS / JATS structure builder places them per chapter / book)
+        self.split_back_matter = split_back_matter
         self.pdf = pdf_document
         self.prefix = prefix
         self.root_tag = root_tag
@@ -660,6 +663,17 @@ class XMLGenerator:
 
     def generate(self, output_path: str):
         debug_log.log("XML", f"generating {output_path} (prefix={self.prefix}, image_dpi={self.assets.dpi})")
+        root_el = self.generate_tree()
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+        tree = etree.ElementTree(root_el)
+        tree.write(output_path, xml_declaration=True, encoding="UTF-8", pretty_print=True)
+        debug_log.log("XML", f"wrote {output_path}, sections={self.counters['section']}, "
+                              f"boxed_text={self.counters['boxed_text']}, assets={dict(self.assets.counters)}")
+        return output_path, dict(self.counters), dict(self.assets.counters)
+
+    def generate_tree(self):
+        """The document as an element tree (not pretty-printed: mixed
+        content keeps its exact whitespace)."""
         page_order = reading_order.compute_page_order(self.zm)
         doc_tree, boundary_issues = hierarchy.build_document_tree(self.zm, page_order)
         if boundary_issues:
@@ -678,7 +692,7 @@ class XMLGenerator:
         body_nodes, back_nodes = [], []
         for n in doc_tree["children"]:
             (back_nodes if self._is_back_matter_node(n) else body_nodes).append(n)
-        if back_nodes:
+        if back_nodes and self.split_back_matter:
             # Only introduce <body>/<back> wrapping when the document
             # actually HAS back matter (a Bibliography or standalone
             # Reference zone) - every other document keeps its existing,
@@ -695,13 +709,7 @@ class XMLGenerator:
             back_el.extend(self._gen_node_list(back_nodes))
         else:
             root_el.extend(self._gen_node_list(doc_tree["children"]))
-
-        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-        tree = etree.ElementTree(root_el)
-        tree.write(output_path, xml_declaration=True, encoding="UTF-8", pretty_print=True)
-        debug_log.log("XML", f"wrote {output_path}, sections={self.counters['section']}, "
-                              f"boxed_text={self.counters['boxed_text']}, assets={dict(self.assets.counters)}")
-        return output_path, dict(self.counters), dict(self.assets.counters)
+        return root_el
 
     def _is_back_matter_node(self, node) -> bool:
         """True for a top-level doc_tree node that belongs in <back> rather
@@ -1147,6 +1155,14 @@ class XMLGenerator:
         self.counters["section"] += 1
         sec_id = f"{self.prefix}-sec{self.counters['section']:03d}"
         el = etree.Element("sec", attrib={"disp-level": str(node["level"]), "id": sec_id})
+        heading = self.zm.zones.get(node.get("zone_id")) if node.get("zone_id") is not None else None
+        if heading is not None:
+            # BITS / JATS structure (core.bits.structure): what kind of book
+            # part / section this heading opens (chapter, part, preface ...)
+            part_type = heading.attributes.get("part_type")
+            if part_type:
+                el.set(PART_TYPE_ATTR, str(part_type))
+            _copy_xml_attrs(heading, el)
         merged_ids = node.get("merged_zone_ids")
         if merged_ids:
             # A heading merged via Merge Previous combines DISTINCT zones -
@@ -2260,18 +2276,33 @@ class XMLGenerator:
         content = text_extractor.extract_zone_formatted_text(page, zone, self._hyphen_keep_at(zone))
         if content:
             try:
-                return _parse_inline(f"<{zone.tag}>{content}</{zone.tag}>")
+                el = _parse_inline(f"<{zone.tag}>{content}</{zone.tag}>")
+                _copy_xml_attrs(zone, el)
+                return el
             except Exception:
                 pass
         el = etree.Element(zone.tag)
+        _copy_xml_attrs(zone, el)
         for c in self._sorted_children(zone):
             el.extend(self._gen_zone_multi(c))
         return el
 
 
+PART_TYPE_ATTR = "data-part-type"
+
+
+def _copy_xml_attrs(zone, el):
+    """Zone attributes written as "@name" (tag-button attrs such as
+    {"@contrib-type": "editor"}) become XML attributes of the element; every
+    other zone attribute is internal bookkeeping and never output."""
+    for k, v in (zone.attributes or {}).items():
+        if isinstance(k, str) and k.startswith("@") and isinstance(v, (str, int)) and len(k) > 1:
+            el.set(k[1:], str(v))
+
+
 def generate_xml(zone_manager, pdf_document, output_path: str, assets_dir: str,
                   prefix: str = "document", jpeg_quality: int = 95, root_tag: str = "book",
-                  image_dpi: int = None, remove_image_background: bool = False):
+                  image_dpi: int = None, remove_image_background: bool = False, split_back_matter: bool = True):
     gen = XMLGenerator(zone_manager, pdf_document, assets_dir, prefix, jpeg_quality, root_tag, image_dpi,
-                        remove_image_background)
+                        remove_image_background, split_back_matter)
     return gen.generate(output_path)
