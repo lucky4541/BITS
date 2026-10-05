@@ -1,2 +1,2 @@
 ACTIVE OCR ENGINE FILE:
-/home/user/bits/core/ocr/ocr_engine.py
+C:\Users\HP\Desktop\ZoneTool\core\ocr\ocr_engine.py
