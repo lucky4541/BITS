@@ -1,4 +1,4 @@
-# Fast-START build: dist\EPUBForge\EPUBForge.exe (+ _internal folder).
+# Fast-START build: dist\BITSTool\BITSTool.exe (+ _internal folder).
 # Opens in seconds instead of unpacking ~1 GB on every double-click.
 Set-Location -Path $PSScriptRoot
 $log = Join-Path $PSScriptRoot 'build_fast_start_log.txt'
@@ -17,14 +17,14 @@ if ($LASTEXITCODE -ne 0) {
     if ($LASTEXITCODE -ne 0) { Say 'BUILD FAILED - dependency installation failed.'; "BUILD_EXIT_CODE=1" | Out-File $log -Append -Encoding utf8; exit 1 }
 } else { Say '      OK - reusing installed packages.' }
 
-Say '[2/4] Removing the previous dist\EPUBForge folder...'
-if (Test-Path 'dist\EPUBForge') { Remove-Item 'dist\EPUBForge' -Recurse -Force }
+Say '[2/4] Removing the previous dist\BITSTool folder...'
+if (Test-Path 'dist\BITSTool') { Remove-Item 'dist\BITSTool' -Recurse -Force }
 
-Say '[3/4] PyInstaller: building the EPUBForge folder (a few minutes)...'
-& $py -m PyInstaller 'packaging\EPUBForge_fast_start.spec' --distpath dist --workpath build_fast_start --noconfirm 2>&1 |
+Say '[3/4] PyInstaller: building the BITSTool folder (a few minutes)...'
+& $py -m PyInstaller 'packaging\BITSTool_fast_start.spec' --distpath dist --workpath build_fast_start --noconfirm 2>&1 |
     ForEach-Object { $_.ToString() } | Tee-Object -FilePath $log -Append |
     Where-Object { $_ -match 'Building COLLECT|Building EXE|completed successfully|ERROR|Error|Build complete' }
-if ($LASTEXITCODE -ne 0 -or -not (Test-Path 'dist\EPUBForge\EPUBForge.exe')) {
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path 'dist\BITSTool\BITSTool.exe')) {
     Say 'BUILD FAILED - see build_fast_start_log.txt'; "BUILD_EXIT_CODE=1" | Out-File $log -Append -Encoding utf8; exit 1
 }
 

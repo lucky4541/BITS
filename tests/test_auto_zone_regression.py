@@ -1,4 +1,4 @@
-"""Mandatory regression suite for the CUPEPUB Auto Zone / Auto Tag /
+"""Mandatory regression suite for the Auto Zone / Auto Tag /
 character-level formatting engine.
 
 The synthetic book (tests/fixtures/regression_doc.py) is generated from a
@@ -37,15 +37,15 @@ def book(tmp_path_factory):
 
 
 @pytest.fixture
-def cup_mode():
+def decor_mode():
     text_extractor.set_decoration_detection_enabled(True)
     yield
     text_extractor.set_decoration_detection_enabled(False)
 
 
 @pytest.fixture(scope="module")
-def cup_profile():
-    return profile_manager.get_profile("CUPEPUB")
+def bits_profile():
+    return profile_manager.get_profile("BITS")
 
 
 def _line_bbox(pdf, page_no, text):
@@ -56,7 +56,7 @@ def _line_bbox(pdf, page_no, text):
 
 
 # ------------------------------------------------------------ formatting
-def test_underline_ranges_are_character_exact(book, cup_mode):
+def test_underline_ranges_are_character_exact(book, decor_mode):
     """full word, partial word, single character, several separate ranges,
     phrase through spaces, interruption at a space, punctuation, accents,
     combined bold + underline (annotation)."""
@@ -73,7 +73,7 @@ def test_underline_ranges_are_character_exact(book, cup_mode):
         assert got == [tuple(r) for r in expected], (line_text, tagged, got, expected)
 
 
-def test_single_character_and_partial_word_stay_exact(book, cup_mode):
+def test_single_character_and_partial_word_stay_exact(book, decor_mode):
     path, _ = book
     pdf = PDFDocument(path)
     line0, line1 = regression_doc.VERSE[0], regression_doc.VERSE[1]
@@ -86,7 +86,7 @@ def test_single_character_and_partial_word_stay_exact(book, cup_mode):
     assert f"villag<{u}>e,</{u}>" in t1          # punctuation included, rest of word not
 
 
-def test_separate_ranges_never_merge_across_undecorated_space(book, cup_mode):
+def test_separate_ranges_never_merge_across_undecorated_space(book, decor_mode):
     path, _ = book
     pdf = PDFDocument(path)
     line = regression_doc.VERSE[3]
@@ -97,7 +97,7 @@ def test_separate_ranges_never_merge_across_undecorated_space(book, cup_mode):
     assert f"<{u}>will not see</{u}>" in phrase, phrase
 
 
-def test_strike_through_detected(book, cup_mode):
+def test_strike_through_detected(book, decor_mode):
     path, truth = book
     pdf = PDFDocument(path)
     line = regression_doc.VERSE[2]
@@ -106,7 +106,7 @@ def test_strike_through_detected(book, cup_mode):
     assert got == [tuple(r) for r in truth["strike_lines"][line]], tagged
 
 
-def test_combined_formatting_kept(book, cup_mode):
+def test_combined_formatting_kept(book, decor_mode):
     path, truth = book
     pdf = PDFDocument(path)
     line = [k for k in truth["underline_lines"] if k not in regression_doc.VERSE][0]
@@ -146,9 +146,9 @@ def _run_auto_zone(path, profile, pages=(1, 2)):
     return pdf, zm, az, results
 
 
-def test_auto_zone_structure_and_reading_order(book, cup_profile, cup_mode):
+def test_auto_zone_structure_and_reading_order(book, bits_profile, decor_mode):
     path, truth = book
-    _pdf, zm, _az, results = _run_auto_zone(path, cup_profile)
+    _pdf, zm, _az, results = _run_auto_zone(path, bits_profile)
     for page, expected in truth["pages"].items():
         assert results[page].error is None
         zones = sorted(zm.zones_on_page(page), key=lambda z: z.serial)
@@ -159,13 +159,13 @@ def test_auto_zone_structure_and_reading_order(book, cup_profile, cup_mode):
                                                                                    exp_role, z.text)
             assert parse_ranges(z.text)[0].startswith(exp_text), (z.text, exp_text)
             # every tag applied exists in the project's own tag set
-            assert z.tag in {b["tag"] for b in cup_profile["tag_buttons"]}
+            assert z.tag in {b["tag"] for b in bits_profile["tag_buttons"]}
         assert [z.serial for z in zones] == list(range(1, len(zones) + 1))
 
 
-def test_verse_lines_and_paragraph_boundaries(book, cup_profile, cup_mode):
+def test_verse_lines_and_paragraph_boundaries(book, bits_profile, decor_mode):
     path, _ = book
-    _pdf, zm, _az, _ = _run_auto_zone(path, cup_profile, pages=(1,))
+    _pdf, zm, _az, _ = _run_auto_zone(path, bits_profile, pages=(1,))
     zones = sorted(zm.zones_on_page(1), key=lambda z: z.serial)
     verse = [parse_ranges(z.text)[0] for z in zones if z.attributes["auto_role"] == "verse_line"]
     assert verse == regression_doc.VERSE
@@ -174,48 +174,42 @@ def test_verse_lines_and_paragraph_boundaries(book, cup_profile, cup_mode):
     assert paras[0].startswith("The traveller") and paras[1].startswith("A second paragraph")
 
 
-def test_formatting_survives_structural_tagging_through_generation(book, cup_profile, cup_mode, tmp_path):
+def test_formatting_survives_structural_tagging_through_generation(book, bits_profile, decor_mode, tmp_path):
     """Structural tag (verse line) + character formatting both reach the
-    final XHTML: zone XML -> normalization -> Mapping.xml."""
-    from core.epub_xml_generator import EpubXmlGenerator
-    from core.mapping_engine import MappingEngine
-    from core import tag_normalizer, xhtml_writer
+    final BITS XML: zone XML -> BITS structure (verse-group / verse-line,
+    <underline>, <strike>)."""
+    from core import xml_generator
+    from core.bits import structure
     from lxml import etree
     path, _ = book
-    pdf, zm, _az, _ = _run_auto_zone(path, cup_profile, pages=(1,))
-    gen = EpubXmlGenerator(zm, pdf, str(tmp_path), "t", cup_profile, component_type="chapter")
-    root = gen.generate()
-    tag_normalizer.normalize_tree(root)
-    u = text_extractor._decoration_tag("underline")
-    verse_tag = next(z.tag for z in zm.zones.values() if z.attributes["auto_role"] == "verse_line")
-    verse_els = list(root.iter(verse_tag))
+    pdf, zm, _az, _ = _run_auto_zone(path, bits_profile, pages=(1,))
+    gen = xml_generator.XMLGenerator(zm, pdf, str(tmp_path), "t", split_back_matter=False)
+    root = structure.build("BITS", gen.generate_tree())
+    verse_els = list(root.iter("verse-line"))
     assert len(verse_els) == 4
-    first = etree.tostring(verse_els[0], encoding="unicode")
-    assert f"<{u}>wóods</{u}>" in first and f"<{u}>k</{u}>" in first, first
-    final = MappingEngine(cup_profile["mapping_xml_path"]).load().apply(root)
-    xhtml_writer.rename_internal_wrapper_tags(final)
-    html = xhtml_writer.build_xhtml_document(final, title="t")
-    out = etree.tostring(html, encoding="unicode")
-    assert "<u>wóods</u>" in out and "<u>k</u>" in out and "<s>stopping</s>" in out
-    assert "<u>To</u> <u>watch</u>" in out
+    assert all(v.getparent().tag == "verse-group" for v in verse_els)
+    out = etree.tostring(root, encoding="unicode")
+    assert "<underline>wóods</underline>" in out and "<underline>k</underline>" in out, out
+    assert "<strike>stopping</strike>" in out
+    assert "<underline>To</underline> <underline>watch</underline>" in out
 
 
-def test_manual_override_and_lock_survive_reanalysis(book, cup_profile, cup_mode):
+def test_manual_override_and_lock_survive_reanalysis(book, bits_profile, decor_mode):
     path, _ = book
-    pdf, zm, az, _ = _run_auto_zone(path, cup_profile, pages=(1,))
+    pdf, zm, az, _ = _run_auto_zone(path, bits_profile, pages=(1,))
     zones = sorted(zm.zones_on_page(1), key=lambda z: z.serial)
     locked, edited = zones[5], zones[3]
     zm.set_locked(locked.zone_id, True)
     settings = {}
     zm.on_manual_retag = lambda z, t, a: record_manual_retag(settings, z, t, a)
-    btn = next(b for b in cup_profile["tag_buttons"] if b["label"] == "Para_NoIndent")
+    btn = next(b for b in bits_profile["tag_buttons"] if b["label"] == "Extract / Quote")
     zm.set_tag(edited.zone_id, btn["tag"], dict(btn["attrs"]))
-    assert edited.manual_override and edited.attributes["cup_name"] == "Para_NoIndent"
-    assert settings["auto_tag_learning"]["paragraph"]["Para_NoIndent"] == 1
+    assert edited.manual_override and edited.attributes["tag_label"] == "Extract / Quote"
+    assert settings["auto_tag_learning"]["paragraph"]["Extract / Quote"] == 1
     res = az.auto_zone_page(1, reanalyse=True)
     assert res.error is None
     assert zm.zones[locked.zone_id].locked
-    assert zm.zones[edited.zone_id].attributes["cup_name"] == "Para_NoIndent"
+    assert zm.zones[edited.zone_id].attributes["tag_label"] == "Extract / Quote"
     # no duplicate zone was created on top of the protected ones
     for z in zm.zones_on_page(1):
         if z.zone_id in (locked.zone_id, edited.zone_id):
@@ -223,32 +217,32 @@ def test_manual_override_and_lock_survive_reanalysis(book, cup_profile, cup_mode
         assert not (abs(z.bbox[1] - locked.bbox[1]) < 1 and abs(z.bbox[0] - locked.bbox[0]) < 1)
     # Auto Tag never retags protected zones
     az.auto_tag_page(1)
-    assert zm.zones[edited.zone_id].attributes["cup_name"] == "Para_NoIndent"
+    assert zm.zones[edited.zone_id].attributes["tag_label"] == "Extract / Quote"
     assert not zm.apply_auto_tag(locked.zone_id, "p", {}, force=True)
 
 
-def test_auto_zone_is_idempotent_and_cached(book, cup_profile, cup_mode, tmp_path):
+def test_auto_zone_is_idempotent_and_cached(book, bits_profile, decor_mode, tmp_path):
     path, _ = book
     pdf = PDFDocument(path)
     zm = ZoneManager(pdf)
-    az = SmartAutoZoner(pdf, zm, cup_profile, {}, cache_dir=str(tmp_path))
+    az = SmartAutoZoner(pdf, zm, bits_profile, {}, cache_dir=str(tmp_path))
     first = az.auto_zone_page(1)
     again = az.auto_zone_page(1)
     assert first.created and not again.created
     files = os.listdir(os.path.join(str(tmp_path), az.fingerprint))
     assert any(f.startswith("p00001_") for f in files) and "context.json" in files
     # a fresh orchestrator re-uses the disk cache (no re-analysis needed)
-    az2 = SmartAutoZoner(pdf, ZoneManager(pdf), cup_profile, {}, cache_dir=str(tmp_path))
+    az2 = SmartAutoZoner(pdf, ZoneManager(pdf), bits_profile, {}, cache_dir=str(tmp_path))
     layout, roles = az2.analyse(1)
     assert len(layout.blocks) == len(az.analyse(1)[0].blocks)
 
 
-def test_document_generator_supports_resume_and_cancel(book, cup_profile, cup_mode):
+def test_document_generator_supports_resume_and_cancel(book, bits_profile, decor_mode):
     import threading
     from auto_zoning.smart_auto_zone import DocumentRunState
     path, _ = book
     pdf = PDFDocument(path)
-    az = SmartAutoZoner(pdf, ZoneManager(pdf), cup_profile, {})
+    az = SmartAutoZoner(pdf, ZoneManager(pdf), bits_profile, {})
     state = DocumentRunState(completed=[1])
     pages = [p for p, *_ in az.compute_document([1, 2], state=state)]
     assert pages == [2]
@@ -257,28 +251,28 @@ def test_document_generator_supports_resume_and_cancel(book, cup_profile, cup_mo
     assert list(az.compute_document([1, 2], cancel_event=cancel)) == []
 
 
-def test_validation_report_clean(book, cup_profile, cup_mode):
+def test_validation_report_clean(book, bits_profile, decor_mode):
     from core import auto_validation
     path, _ = book
-    pdf, zm, az, _ = _run_auto_zone(path, cup_profile)
-    rep = auto_validation.run(zm, pdf, cup_profile, az.knowledge)
+    pdf, zm, az, _ = _run_auto_zone(path, bits_profile)
+    rep = auto_validation.run(zm, pdf, bits_profile, az.knowledge)
     assert rep.ok, rep.to_text()
     assert rep.count(stage="reading_order") == 0
     assert rep.count(stage="formatting") == 0
 
 
 # -------------------------------------------------------- knowledge model
-def test_roles_resolve_from_project_configuration(cup_profile):
+def test_roles_resolve_from_project_configuration(bits_profile):
     from core.tag_knowledge import TagKnowledgeModel
-    km = TagKnowledgeModel.build(cup_profile, {})
-    labels = {b["label"] for b in cup_profile["tag_buttons"]}
+    km = TagKnowledgeModel.build(bits_profile, {})
+    labels = {b["label"] for b in bits_profile["tag_buttons"]}
     for role in ("paragraph", "verse_line", "footnote", "page_number", "caption", "heading_1", "list_numbered"):
         best = km.best_for_role(role)
         assert best is not None and best.option.label in labels, role
     # a concept the project has no tag for is never applied
     assert km.best_for_role("running_header") is None
-    # families come from Mapping.xml
-    assert any(len(f.members) >= 3 for f in km.mapping.families)
+    assert km.best_for_role("heading_1").option.label == "Chapter Title"
+    assert km.best_for_role("endnote_heading").option.label == "Notes Title"
 
 
 def test_dtd_model_constraints():
@@ -301,17 +295,18 @@ def test_dtd_model_constraints():
     assert dtd.validate(etree.fromstring("<doc><poem><line>a</line></poem></doc>"))
 
 
-def test_dtd_constraint_changes_tag_decision(cup_profile, tmp_path):
+def test_dtd_constraint_changes_tag_decision(bits_profile, tmp_path):
     """A DTD that forbids the best tag in context makes Auto Tag fall back to
     the next valid candidate and flag the decision for review."""
     from core.tag_knowledge import TagKnowledgeModel, DTDModel
     from auto_zoning.auto_tag_engine import decide_page
     from auto_zoning.layout_engine import LayoutBlock, PageLayout
     from auto_zoning.semantic_classifier import RoleCandidate
-    km = TagKnowledgeModel.build(cup_profile, {})
+    km = TagKnowledgeModel.build(bits_profile, {})
     poem_tag = km.best_for_role("verse_line").option.tag
     para_tag = km.best_for_role("paragraph").option.tag
-    km.dtds = [DTDModel.from_string(f"<!ELEMENT component ({para_tag})*><!ELEMENT {para_tag} (#PCDATA)>"
+    root = bits_profile["root_tag"]
+    km.dtds = [DTDModel.from_string(f"<!ELEMENT {root} ({para_tag})*><!ELEMENT {para_tag} (#PCDATA)>"
                                     f"<!ELEMENT {poem_tag} (#PCDATA)>")]
     km._role_cache.clear()
     b = LayoutBlock(kind="verse_line", bbox=(0, 0, 10, 10))
@@ -322,16 +317,19 @@ def test_dtd_constraint_changes_tag_decision(cup_profile, tmp_path):
     assert dec.needs_review
 
 
-def test_reference_corpus_statistics(cup_profile, tmp_path):
+def test_reference_corpus_statistics(bits_profile, tmp_path):
+    """Approved BITS XML files are the reference corpus: statistics per zone
+    element (verse lines here)."""
     from core.tag_knowledge import TagKnowledgeModel
     for i in range(3):
-        (tmp_path / f"ref{i}.xhtml").write_text(
-            "<html xmlns='http://www.w3.org/1999/xhtml'><body>"
-            "<p class='poemline'>One <u>line</u></p><p class='poemline'>Two</p><p>Prose follows.</p>"
-            "</body></html>", encoding="utf-8")
-    km = TagKnowledgeModel.build(cup_profile, {"auto_tag_reference_xml_dirs": [str(tmp_path)]})
+        (tmp_path / f"ref{i}.xml").write_text(
+            "<book><book-body><book-part><body><verse-group><verse-line>One <underline>line</underline></verse-line>"
+            "<verse-line>Two</verse-line></verse-group><p>Prose follows.</p></body></book-part></book-body></book>",
+            encoding="utf-8")
+    km = TagKnowledgeModel.build(bits_profile, {"auto_tag_reference_xml_dirs": [str(tmp_path)]})
     assert len(km.corpus.files) == 3
     poem = km.best_for_role("verse_line").option.tag
+    assert poem == "verse-line"
     assert km.corpus.text_stats[poem].count == 6
     assert km.corpus.succession_probability(poem, poem) > 0.4
     assert km.corpus.stats_for(poem)["decorated_ratio"] > 0
@@ -380,7 +378,7 @@ SUPPLIED = sorted(glob.glob(os.path.join(ROOT, "tests", "regression", "pdfs", "*
 
 
 @pytest.mark.parametrize("pdf_path", SUPPLIED or [None])
-def test_supplied_pdfs(pdf_path, cup_mode):
+def test_supplied_pdfs(pdf_path, decor_mode):
     """Drop a real PDF into tests/regression/pdfs/ with <name>.expected.json:
     {"underlines": [{"page": 1, "line": "<exact line text>", "ranges": [[start, end], ...]}],
      "strikes": [...same shape...]}
@@ -404,12 +402,14 @@ def test_supplied_pdfs(pdf_path, cup_mode):
             assert ranges_for_style(tagged, style) == [tuple(r) for r in case["ranges"]], tagged
 
 
-def test_engine_bookkeeping_never_reaches_output(book, cup_profile, cup_mode, tmp_path):
-    from core.epub_xml_generator import EpubXmlGenerator
-    from lxml import etree
+def test_engine_bookkeeping_never_reaches_output(book, bits_profile, decor_mode, tmp_path):
+    from core.bits import pipeline
     path, _ = book
-    pdf, zm, _az, _ = _run_auto_zone(path, cup_profile, pages=(1,))
-    root = EpubXmlGenerator(zm, pdf, str(tmp_path), "t", cup_profile, component_type="chapter").generate()
-    xml = etree.tostring(root, encoding="unicode")
-    for key in ("auto_engine", "auto_role", "confidence", "needs_review", "locked", "manual_override"):
+    pdf, zm, _az, _ = _run_auto_zone(path, bits_profile, pages=(1,))
+    out = str(tmp_path / "t.xml")
+    pipeline.generate(zm, pdf, "BITS", out, str(tmp_path / "img"), prefix="t")
+    with open(out, encoding="utf-8") as f:
+        xml = f.read()
+    for key in ("auto_engine", "auto_role", "confidence", "needs_review", "locked", "manual_override", "tag_label",
+                "part_type", "data-part-type"):
         assert f'{key}="' not in xml, key

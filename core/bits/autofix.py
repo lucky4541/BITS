@@ -183,6 +183,11 @@ class Fixer:
         if d is None:
             return 0
         changed = 0
+        for (etag, attr), mapping in VALUE_MAP.items():   # well-known synonyms, even where the DTD allows any value
+            if el.tag == etag and el.get(attr) in mapping:
+                self.note("attribute value", el, f"{attr}=\"{el.get(attr)}\" -> \"{mapping[el.get(attr)]}\"")
+                el.set(attr, mapping[el.get(attr)])
+                changed += 1
         for name in list(el.attrib):
             local = name.split("}", 1)[-1]
             key = "xml:" + local if name.startswith("{" + XML_NS) else (
@@ -334,6 +339,15 @@ class Fixer:
                 self.note("block in paragraph", c, f"<{_qname(el)}> split around <{name}>")
                 changed += 1
                 return changed
+            # last resort in a text flow: a text element that does not belong here
+            # (e.g. <publisher-name> in a body) becomes a paragraph, its text kept
+            if self.allows(el, "p") and all(self.is_inline(_qname(x)) for x in c if isinstance(x.tag, str)) \
+                    and c.tag not in ("sec", "body", "back", "front"):
+                c.tag = "p"
+                c.attrib.clear()
+                c.set("content-type", name)
+                self.note("misplaced element", c, f"<{name}> kept as <p content-type=\"{name}\">")
+                changed += 1
         return changed
 
     def nearest_holder(self, marker):

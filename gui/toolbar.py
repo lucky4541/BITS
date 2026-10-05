@@ -125,7 +125,7 @@ class Toolbar(tk.Frame):
         overlay_menu = tk.Menu(smart_menu, tearoff=0)
         smart.build_overlay_menu(overlay_menu)
         smart_menu.add_cascade(label="Debug Overlays", menu=overlay_menu)
-        self.file_menu.add_cascade(label="Auto Zone / Auto Tag (CUPEPUB)", menu=smart_menu)
+        self.file_menu.add_cascade(label="Auto Zone / Auto Tag (BITS / JATS)", menu=smart_menu)
         self.file_menu.add_command(label="Auto Detect (OCR)...", command=app.auto_detect_ocr)
         self.file_menu.add_command(label="Prepare OCR Cache...", command=app.prepare_ocr_cache)
         self.file_menu.add_command(label="OCR Entire Document...", command=app.ocr_entire_document)

@@ -4,7 +4,7 @@ Kept out of gui/main_window.py so the main window only needs a handful of
 wiring lines: menu entries and the zone context menu call methods of
 SmartAutoZoneUI; the PDF viewer calls draw_debug_overlays() after drawing
 zones. Every action:
-  * runs only for the CUPEPUB profile (the engine is CUPEPUB-scoped);
+  * runs for the BITS and JATS profiles;
   * is one undo step per page;
   * preserves locked / manually overridden / hand-drawn zones.
 """
@@ -20,7 +20,7 @@ from core import auto_validation, profile_manager
 from core.zone_manager import ZoneManager, Zone
 from auto_zoning.smart_auto_zone import SmartAutoZoner, DocumentRunState, record_manual_retag, ENGINE_VERSION
 
-PROFILE = "CUPEPUB"
+PROFILES = ("BITS", "JATS")
 REVIEW_COLOR = "#C2185B"
 LOCK_MARK = "\U0001F512"
 
@@ -48,10 +48,10 @@ class SmartAutoZoneUI:
 
     # ------------------------------------------------------------ basics
     def _check(self, need_pdf=True) -> bool:
-        if self.app.settings.get("profile", "").upper() != PROFILE:
+        if self.app.settings.get("profile", "").upper() not in PROFILES:
             messagebox.showinfo("Auto Zone / Auto Tag",
-                                "The Auto Zone / Auto Tag engine works with the CUPEPUB profile.\n"
-                                "Switch the Profile to CUPEPUB first.")
+                                "The Auto Zone / Auto Tag engine works with the BITS and JATS profiles.\n"
+                                "Switch the Profile to BITS or JATS first.")
             return False
         if need_pdf and not self.app.pdf_document:
             messagebox.showwarning("Auto Zone / Auto Tag", "Open a PDF first.")
@@ -82,7 +82,7 @@ class SmartAutoZoneUI:
     def on_profile_changed(self):
         self._zoner = None
         from core import text_extractor
-        text_extractor.set_decoration_detection_enabled(self.app.settings.get("profile", "").upper() == PROFILE)
+        text_extractor.set_decoration_detection_enabled(self.app.settings.get("profile", "").upper() in PROFILES)
         self.app.zone_manager.on_manual_retag = self._on_manual_retag
 
     def on_document_changed(self):
@@ -400,7 +400,8 @@ class SmartAutoZoneUI:
             return
         km = self.zoner().knowledge
         report = auto_validation.run(self.app.zone_manager, self.app.pdf_document, self.app.active_profile, km,
-                                     thresholds=self.app.settings.get("auto_zone_thresholds"))
+                                     thresholds=self.app.settings.get("auto_zone_thresholds"),
+                                     settings={"bits_dtd_path": self.app.settings.get("bits_dtd_path", "")})
         ValidationReportDialog(self.app.root, self.app, report)
 
     # ------------------------------------------------------------ preview

@@ -2,7 +2,7 @@
 title ZoneTool FAST-START build - do not close this window
 cd /d "%~dp0"
 echo ============================================================
-echo  FAST-START build: dist\EPUBForge\EPUBForge.exe
+echo  FAST-START build: dist\BITSTool\BITSTool.exe
 echo  (a folder build - opens in seconds, everything included)
 echo  DO NOT CLOSE THIS WINDOW until it says Done.
 echo ============================================================
@@ -11,8 +11,8 @@ set RC=%errorlevel%
 echo.
 if "%RC%"=="0" (
   echo BUILD SUCCEEDED
-  echo   Run:        %~dp0dist\EPUBForge\EPUBForge.exe
-  echo   To share:   copy the WHOLE dist\EPUBForge folder ^(exe + _internal^)
+  echo   Run:        %~dp0dist\BITSTool\BITSTool.exe
+  echo   To share:   copy the WHOLE dist\BITSTool folder ^(exe + _internal^)
 ) else (
   echo BUILD FAILED - see build_fast_start_log.txt
 )

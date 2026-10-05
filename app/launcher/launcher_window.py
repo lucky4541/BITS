@@ -1,7 +1,7 @@
-"""EPUBForge compact Launch Screen / Feature Hub.
+"""BITS Tool launch screen / feature hub.
 
 Presentation-only launcher redesign. Existing module handlers and lazy imports
-are preserved; this file does not alter Zoning, Validation, Compare, or EPUB
+are preserved; this file does not alter Zoning, Validation or Compare
 Structure internals.
 """
 
@@ -23,7 +23,7 @@ class LauncherWindow:
         theme.apply_ttk_style(root, theme.current.palette)
         self.p = theme.current.snapshot() 
 
-        self.root.title("EPUBForge - EPUB & PDF Production Suite")
+        self.root.title("BITS Tool - PDF to BITS / JATS XML")
         self.root.geometry("960x610")
         self.root.minsize(820, 540)
         self.root.configure(bg=self.p["app_bg"])
@@ -70,7 +70,7 @@ class LauncherWindow:
 
         tk.Label(
             left,
-            text="EPUBForge",
+            text="BITS Tool",
             bg=p["header_bg"],
             fg=p["header_fg"],
             font=(theme.FONT_FAMILY, 17, "bold"),
@@ -78,7 +78,7 @@ class LauncherWindow:
 
         tk.Label(
             left,
-            text="  EPUB & PDF Production Suite",
+            text="  PDF to BITS / JATS XML",
             bg=p["header_bg"],
             fg=p["header_fg_muted"],
             font=theme.FONT_SMALL,
@@ -148,8 +148,8 @@ class LauncherWindow:
         cards = [
             (
                 "01",
-                "ZONING",
-                "Zone PDFs and generate\nCUPEPUB / EPUB / XHTML.",
+                "ZONING & TAGGING",
+                "Zone and tag PDFs, then generate\nBITS 2.2 / JATS 1.4 XML.",
                 "READY",
                 p["accent"],
                 "Open",
@@ -157,8 +157,8 @@ class LauncherWindow:
             ),
             (
                 "02",
-                "VALIDATION",
-                "Validate, repair and inspect\nfinished EPUB packages.",
+                "XML VALIDATION",
+                "Validate BITS / JATS XML against\nthe DTD and auto-fix safely.",
                 "READY",
                 p["warning"],
                 "Open",
@@ -166,30 +166,12 @@ class LauncherWindow:
             ),
             (
                 "03",
-                "FIDELITY COMPARE",
-                "Compare PDF, EPUB and converted\nPDF for measurable fidelity.",
+                "PDF \u2194 XML COMPARE",
+                "Compare the source PDF with the\ngenerated XML, word by word.",
                 "READY",
                 p["success"],
                 "Open",
                 self._open_comparison,
-            ),
-            (
-                "04",
-                "EPUB STRUCTURE",
-                "Analyze and repair NAV, OPF,\npage-list and NCX.",
-                "READY",
-                p["accent"],
-                "Open",
-                self._open_epub_structure,
-            ),
-            (
-                "05",
-                "PDF \u2194 XHTML QC",
-                "Map, compare, auto-correct and\nmanage splits against the PDF.",
-                "READY",
-                p["success"],
-                "Open",
-                self._open_qc,
             ),
         ]
 
@@ -325,7 +307,7 @@ class LauncherWindow:
 
         tk.Label(
             footer,
-            text="CUPEPUB Profile",
+            text="BITS 2.2 / JATS 1.4",
             bg=p["panel_bg"],
             fg=p["text_muted"],
             font=theme.FONT_SMALL,
@@ -355,7 +337,7 @@ class LauncherWindow:
         self.root.withdraw()
 
         toplevel = tk.Toplevel(self.root)
-        toplevel.title("EPUBForge - Zoning")
+        toplevel.title("BITS Tool - Zoning & Tagging")
         toplevel.geometry("1400x900")
         toplevel.minsize(1000, 700)
 
@@ -370,10 +352,10 @@ class LauncherWindow:
         )
 
     def _open_validation(self):
-        from app.validation import validation_window
+        from app.xml_validation import xml_validation_window
 
         self.root.withdraw()
-        self._active_child = validation_window.open_window(
+        self._active_child = xml_validation_window.open_window(
             self.root,
             self._on_child_home,
         )
@@ -383,25 +365,6 @@ class LauncherWindow:
 
         self.root.withdraw()
         self._active_child = comparison_window.open_window(
-            self.root,
-            self._on_child_home,
-        )
-
-    def _open_epub_structure(self):
-        from app.epub_structure import epub_structure_window
-
-        self.root.withdraw()
-        self._active_child = epub_structure_window.open_window(
-            self.root,
-            self._on_child_home,
-        )
-
-
-    def _open_qc(self):
-        from app.qc import qc_window
-
-        self.root.withdraw()
-        self._active_child = qc_window.open_window(
             self.root,
             self._on_child_home,
         )

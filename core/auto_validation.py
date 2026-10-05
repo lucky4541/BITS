@@ -96,7 +96,7 @@ def _plain(zone_text: str) -> str:
 
 
 def run(zone_manager, pdf_document, profile: dict, knowledge=None, generated_root=None, pages=None,
-        thresholds=None) -> ValidationReport:
+        thresholds=None, settings=None) -> ValidationReport:
     report = ValidationReport()
     thresholds = thresholds or {"high": 90, "medium": 75}
     zones = list(zone_manager.zones.values())
@@ -212,6 +212,24 @@ def run(zone_manager, pdf_document, profile: dict, knowledge=None, generated_roo
                 if allowed is False:
                     report.add("parent_child", "error", f"<{z.tag}> is not allowed inside <{parent.tag}> "
                                f"({dtd.source})", zone=z)
+    kind = (profile.get("name") or "").upper()
+    if generated_root is None and kind in ("BITS", "JATS") and zones:
+        # the real output: zones -> BITS / JATS structure -> DTD (+ safe auto-fix)
+        try:
+            from core.bits import pipeline as bits_pipeline
+            _root, before, after, lost = bits_pipeline.preview(zone_manager, pdf_document, kind, settings)
+            if before is None:
+                report.add("dtd", "info", f"{kind} DTD not installed - the output was not validated")
+            else:
+                fixed = len(before) - len(after)
+                if fixed > 0:
+                    report.add("dtd", "info", f"{fixed} DTD problem(s) are repaired automatically at Generate XML")
+                for msg in after:
+                    report.add("dtd", "error", msg)
+            for w in lost[:20]:
+                report.add("text", "error", f"text would be lost in the {kind} output: {w!r}")
+        except Exception as e:  # noqa: BLE001
+            report.add("dtd", "warning", f"{kind} output could not be built for validation: {e}")
     if generated_root is not None and dtds:
         root_name = generated_root.tag.split("}")[-1] if isinstance(generated_root.tag, str) else None
         for dtd in dtds:
@@ -227,7 +245,7 @@ def run(zone_manager, pdf_document, profile: dict, knowledge=None, generated_roo
                     if attr.name not in el.attrib:
                         report.add("attributes", "error", f"<{el.tag}> is missing required attribute "
                                    f"'{attr.name}'")
-    elif not dtds:
+    elif not dtds and kind not in ("BITS", "JATS"):
         report.add("dtd", "info", "no DTD found for this profile (profiles/<profile>/dtd) - DTD stages skipped")
 
     # ---------------------------------------------------- 9. patterns

@@ -1,4 +1,4 @@
-"""ZoneTool entry point. Run with: python main.py"""
+"""BITS Tool entry point. Run with: python main.py"""
 import sys
 import os
 
@@ -29,7 +29,7 @@ def _check_dependencies():
 
 
 def _selfcheck_resources():
-    """`EPUBForge.exe --selfcheck-resources` - runs the REAL, built EXE
+    """`BITSTool.exe --selfcheck-resources` - runs the REAL, built EXE
     (onedir or onefile) and confirms every bundled resource EPUBForge
     needs at runtime actually resolves via core.resource_path, without
     needing a display/GUI at all. This is what packaging/check_package.py
@@ -64,7 +64,7 @@ def _selfcheck_resources():
 
 
 def _selfcheck_full():
-    """`EPUBForge.exe --selfcheck-full` - a GUI-less, real end-to-end
+    """`BITSTool.exe --selfcheck-full` - a GUI-less, real end-to-end
     functional test run INSIDE the actual packaged build (onedir or
     onefile): open a real PDF, run PaddleOCR against it, zone the result,
     generate XHTML, and save/reload a project - the same stack a real
@@ -91,7 +91,7 @@ def _selfcheck_full():
             print("--- end traceback ---")
             results.append(False)
 
-    tmp_dir = tempfile.mkdtemp(prefix="epubforge_selfcheck_")
+    tmp_dir = tempfile.mkdtemp(prefix="bitstool_selfcheck_")
     state = {}
 
     def _make_pdf():
@@ -99,7 +99,7 @@ def _selfcheck_full():
         path = os.path.join(tmp_dir, "selfcheck.pdf")
         doc = fitz.open()
         page = doc.new_page(width=400, height=200)
-        page.insert_text((50, 60), "EPUBForge packaging self-check.", fontsize=14)
+        page.insert_text((50, 60), "BITS Tool packaging self-check.", fontsize=14)
         doc.save(path)
         doc.close()
         state["pdf_path"] = path
@@ -116,22 +116,18 @@ def _selfcheck_full():
         text = extract_plain_text(page, [0, 0, 400, 200])
         assert "packaging self-check" in text, f"unexpected text: {text!r}"
 
-    def _zone_and_generate_xhtml():
+    def _zone_and_generate_xml():
         from core.zone_manager import ZoneManager
-        from core.epub_xml_generator import EpubXmlGenerator
-        from core.component_output import ComponentOutputManager
-        from lxml import etree
+        from core.bits import pipeline
         zm = ZoneManager(state["pdf"])
         zm.add_zone(1, "p", [40, 45, 360, 85])
-        out_root = os.path.join(tmp_dir, "output")
-        mgr = ComponentOutputManager(out_root, "selfcheck")
-        mgr.ensure_dirs()
-        profile = {"name": "CUPEPUB", "xhtml_enabled": True, "tag_buttons": [], "tag_colors": {}}
-        gen = EpubXmlGenerator(zm, state["pdf"], str(mgr.images_dir), "selfcheck", profile,
-                                image_prefix=mgr.image_prefix)
-        root = gen.generate()
-        xml = etree.tostring(root, encoding="unicode")
-        assert "packaging self-check" in xml, f"generated XHTML missing expected text: {xml}"
+        out = os.path.join(tmp_dir, "output", "selfcheck.xml")
+        res = pipeline.generate(zm, state["pdf"], "JATS", out, os.path.join(tmp_dir, "output", "images"),
+                                prefix="selfcheck")
+        with open(out, encoding="utf-8") as f:
+            xml = f.read()
+        assert "packaging self-check" in xml, f"generated XML missing expected text: {xml}"
+        assert res.text_preserved, res.summary()
         state["zone_manager"] = zm
 
     def _save_and_reload_project():
@@ -172,7 +168,7 @@ def _selfcheck_full():
     _check("make a real synthetic PDF (proves PyMuPDF write path)", _make_pdf)
     _check("open the PDF (core.pdf_loader.PDFDocument)", _open_pdf)
     _check("extract text from the PDF (core.text_extractor)", _extract_text)
-    _check("zone it and generate real XHTML (core.epub_xml_generator)", _zone_and_generate_xhtml)
+    _check("zone it and generate JATS XML (core.bits.pipeline)", _zone_and_generate_xml)
     _check("save and reload a project (core.project_manager)", _save_and_reload_project)
     _check("PaddleOCR engine initializes (bundled models load)", _paddleocr_initializes)
     _check("PaddleOCR recognizes real rendered text", _ocr_recognizes_real_text)
@@ -198,7 +194,7 @@ def main():
     # opt-in verbose trace.
     from core import app_log
     app_log.install_excepthook()
-    app_log.info("EPUBForge starting")
+    app_log.info("BITS Tool starting")
     # A GUI app must not be killed by a stray Ctrl+C reaching the console it
     # was launched from (e.g. "python main.py" in PowerShell: Ctrl+C pressed
     # in that window, or a Ctrl+C event broadcast to the console). That
@@ -218,7 +214,7 @@ def main():
     except Exception as exc:
         app_log.error("Startup failed", exc)
         raise
-    app_log.info("EPUBForge exited normally")
+    app_log.info("BITS Tool exited normally")
 
 
 if __name__ == "__main__":

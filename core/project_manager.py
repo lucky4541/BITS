@@ -18,9 +18,8 @@ DEFAULT_SETTINGS = {
     "remove_image_background": False,
     "debug_logging": False,
     "auto_zone_thresholds": {"high": 90, "medium": 75},   # confidence-bucket cutoffs for Auto Zone
-    "profile": "XML",           # "XML" | "EPUB" - see core/profile_manager.py
-    "mapping_xml_path": "",     # EPUB only; "" = use the active profile's own default path
-    "epub_component_type": "",  # EPUB only; "" = use the active profile's default_component_type
+    "profile": "BITS",          # "BITS" | "JATS" - see core/profile_manager.py
+    "bits_dtd_path": "",        # "" = the BITS-book*.dtd in profiles/BITS/dtd/ (core/bits/dtd.py)
     # Zone canvas display toggles (gui/pdf_viewer.py._draw_zone) - purely
     # visual, never affect zone data/selection/generation. Defaults ON so
     # existing projects render identically to before these existed.
@@ -42,17 +41,10 @@ DEFAULT_SETTINGS = {
     "index_shortcut_reset": "<Control-Key-0>",
     # EPUBForge "Generation Type" / "XHTML Profile" (spec: "EPUBForge -
     # MASTER APPLICATION ARCHITECTURE & XHTML PROFILE SYSTEM", Part 7/8) -
-    # "CUPEPUB" here is a DIFFERENT, additive gate from the existing
-    # "profile" setting above (XML/EPUB/CUPEPUB tag sets) - see
-    # gui/toolbar.py's set_generation_type_options. xhtml_profile_key is
-    # the profiles/xhtml/<key>.json to use when generation_type is
-    # "Client XHTML" (core/xhtml_profile_manager.py); "" = none selected
-    # yet. xhtml_profile_label mirrors the dropdown's own display text so
-    # a reopened project shows the same combobox text without needing to
-    # reload/re-lookup the profile just to redraw the control.
-    "generation_type": "CUPEPUB",   # "CUPEPUB" | "XHTML-EPUB" | "Client XHTML"
-    "xhtml_profile_key": "",
-    "xhtml_profile_label": "",
+    # document metadata for the BITS / JATS output (core.bits.structure):
+    # book_id, doi, isbn, publisher, language, book_type / journal_id,
+    # journal_title, issn, article_type, pub_year, volume, issue ...
+    "bits_meta": {},
 }
 
 
@@ -75,12 +67,11 @@ def build_project_data(pdf_path: str, dpi: int, zoom: float, zone_manager: ZoneM
         # caller (gui/main_window.py's load_project) - this is an explicit,
         # documented top-level VIEW of the same data, never a second place
         # it's stored or a second thing that could disagree with it.
-        "profile": settings.get("profile", "XML"),
+        "profile": settings.get("profile", "BITS"),
         "profile_version": settings.get("profile_version"),
         "generation_settings": {
-            "generation_type": settings.get("generation_type"),
-            "epub_component_type": settings.get("epub_component_type"),
-            "xhtml_profile_key": settings.get("xhtml_profile_key"),
+            "output": "JATS" if str(settings.get("profile", "BITS")).upper() == "JATS" else "BITS",
+            "bits_meta": settings.get("bits_meta") or {},
         },
         "pdf": pdf_path,
         # Source-PDF fingerprint (spec section 30) - compared on reopen so

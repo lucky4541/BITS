@@ -215,7 +215,7 @@ class PDFViewerPanel(tk.Frame):
         # page load. Shown until the first load_page() call, hidden (and
         # never shown again this session) the moment a page actually renders.
         self._empty_state = tk.Frame(self, bg=palette["canvas_bg"])
-        tk.Label(self._empty_state, text="EPUBForge", bg=palette["canvas_bg"], fg=palette["text"],
+        tk.Label(self._empty_state, text="BITS Tool", bg=palette["canvas_bg"], fg=palette["text"],
                   font=(theme.FONT_FAMILY, 20, "bold")).pack(pady=(0, 4))
         tk.Label(self._empty_state, text="PDF Zoning & EPUB Production", bg=palette["canvas_bg"],
                   fg=palette["text_muted"], font=theme.FONT_BODY).pack(pady=(0, 18))

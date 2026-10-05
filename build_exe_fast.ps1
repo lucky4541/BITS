@@ -1,4 +1,4 @@
-# Fast one-file build of EPUBForge.exe (see packaging\EPUBForge_onefile_fast.spec).
+# Fast one-file build of BITSTool.exe (see packaging\BITSTool_onefile_fast.spec).
 Set-Location -Path $PSScriptRoot
 $ErrorActionPreference = 'Continue'
 $log = Join-Path $PSScriptRoot 'build_onefile_log.txt'
@@ -21,14 +21,14 @@ if ($LASTEXITCODE -ne 0) {
     if ($LASTEXITCODE -ne 0) { Say 'BUILD FAILED - dependency installation failed.'; "BUILD_EXIT_CODE=1" | Out-File $log -Append -Encoding utf8; exit 1 }
 } else { Say '      OK - reusing installed packages.' }
 
-Say '[2/4] Removing the previous dist\EPUBForge.exe (build cache is kept for speed)...'
-if (Test-Path 'dist\EPUBForge.exe') { Remove-Item 'dist\EPUBForge.exe' -Force }
+Say '[2/4] Removing the previous dist\BITSTool.exe (build cache is kept for speed)...'
+if (Test-Path 'dist\BITSTool.exe') { Remove-Item 'dist\BITSTool.exe' -Force }
 
 Say '[3/4] PyInstaller: analysing + packing everything into ONE exe (the "Building PKG" step is silent for a few minutes)...'
-& $py -m PyInstaller 'packaging\EPUBForge_onefile_fast.spec' --distpath dist --workpath build_onefile_fast --noconfirm 2>&1 |
+& $py -m PyInstaller 'packaging\BITSTool_onefile_fast.spec' --distpath dist --workpath build_onefile_fast --noconfirm 2>&1 |
     ForEach-Object { $_.ToString() } | Tee-Object -FilePath $log -Append |
     Where-Object { $_ -match 'Building PKG|Building EXE|completed successfully|ERROR|Error|FAST BUILD|Build complete' }
-if ($LASTEXITCODE -ne 0 -or -not (Test-Path 'dist\EPUBForge.exe')) {
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path 'dist\BITSTool.exe')) {
     Say 'BUILD FAILED - see build_onefile_log.txt'; "BUILD_EXIT_CODE=1" | Out-File $log -Append -Encoding utf8; exit 1
 }
 

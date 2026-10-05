@@ -98,8 +98,15 @@ class ProfileLoadError(Exception):
     pass
 
 
-def get_profile(name: str) -> dict:
+def _key(name):
+    """Profile key; a project saved by the zoning tool this was derived from
+    (XML / EPUB / CUPEPUB) opens with the default BITS profile."""
     key = (name or DEFAULT_PROFILE_NAME).strip().upper()
+    return key if key in list_profile_names() else DEFAULT_PROFILE_NAME
+
+
+def get_profile(name: str) -> dict:
+    key = _key(name)
     if key not in _cache:
         _cache[key] = load_profile(key)
     return _cache[key]
@@ -110,7 +117,7 @@ def reload_profile(name: str) -> dict:
     edits a profile JSON externally and wants it picked up without
     restarting the app (Settings > Reload Profiles, or automatically on
     every profile switch - see gui/main_window.py App.set_profile)."""
-    key = (name or DEFAULT_PROFILE_NAME).strip().upper()
+    key = _key(name)
     _cache.pop(key, None)
     return get_profile(key)
 

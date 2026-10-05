@@ -95,14 +95,13 @@ class TagKnowledgeModel:
         dtds = []
         dtd_dirs = [d for d in [profile_dir, settings.get("auto_tag_dtd_dir")] if d]
         if (profile.get("name") or "").upper() in ("BITS", "JATS"):
-            # exactly the DTD the output is validated against (core.bits.dtd) -
-            # never every variant in the folder
+            # The BITS / JATS DTD describes the FINAL document (book / article /
+            # sec ...), not the zone tags (verse-line, fn, contrib ... are placed
+            # by core.bits.structure), so it is never a zone-level Auto Tag
+            # constraint - the generated output is validated against it instead
+            # (core.bits.pipeline, auto_validation stage 8). Only a DTD the user
+            # points Auto Tag at explicitly is used here.
             dtd_dirs = [d for d in [settings.get("auto_tag_dtd_dir")] if d]
-            try:
-                from core.bits import dtd as bits_dtd
-                dtds.append(bits_dtd.load(profile["name"].upper(), settings.get("bits_meta") or {}))
-            except Exception as e:  # noqa: BLE001
-                diagnostics.append(f"{profile['name']} DTD: {e}")
         for path in settings.get("auto_tag_dtd_paths", []) or []:
             try:
                 dtds.append(DTDModel.from_file(path))

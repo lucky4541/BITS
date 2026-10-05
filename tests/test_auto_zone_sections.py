@@ -31,7 +31,7 @@ def zoned(book):
     text_extractor.set_decoration_detection_enabled(True)
     pdf = PDFDocument(book)
     zm = ZoneManager(pdf)
-    az = SmartAutoZoner(pdf, zm, profile_manager.get_profile("CUPEPUB"), {})
+    az = SmartAutoZoner(pdf, zm, profile_manager.get_profile("BITS"), {})
     results = {p: az.auto_zone_page(p) for p in range(1, 6)}
     yield pdf, zm, az, results
     text_extractor.set_decoration_detection_enabled(False)
@@ -39,11 +39,16 @@ def zoned(book):
 
 def _content(zm, page):
     return [z for z in sorted(zm.zones_on_page(page), key=lambda z: (z.serial or 10 ** 9, z.created_order))
-            if z.tag != "pagenum"]
+            if z.tag != "pagenumber"]
 
 
 def _starting(zm, page, prefix):
     return next(z for z in zm.zones_on_page(page) if z.text.replace("<b>", "").startswith(prefix))
+
+
+def _is_heading(zone, part_type):
+    """A BITS section heading: <h1> opening a notes / bibliography part."""
+    return zone.tag == "h1" and zone.attributes.get("part_type") == part_type
 
 
 def test_section_map_finds_notes_and_references(book):
@@ -77,7 +82,7 @@ def test_new_paragraph_after_page_break_is_not_merged(zoned):
 
 def test_notes_section_tags(zoned):
     _pdf, zm, _az, _r = zoned
-    assert _starting(zm, 3, "Notes").tag == "enhead"
+    assert _is_heading(_starting(zm, 3, "Notes"), "notes")
     for prefix in ("1. Brown", "2. The letters"):
         assert _starting(zm, 3, prefix).tag == "en"
     note3 = _starting(zm, 4, "3. See also")
@@ -89,8 +94,8 @@ def test_notes_section_tags(zoned):
 
 def test_references_section_tags(zoned):
     _pdf, zm, _az, _r = zoned
-    assert _starting(zm, 4, "References").tag == "refhead"
-    refs = [z for z in zm.zones_on_page(4) if z.tag == "ref_d"]
+    assert _is_heading(_starting(zm, 4, "References"), "bibliography")
+    refs = [z for z in zm.zones_on_page(4) if z.tag == "reference"]
     assert sorted(z.text.split(",")[0] for z in refs) == ["Brown", "Mackey", "Ward"]   # one zone per entry
     assert not any(z.attributes.get("merged_with_previous") for z in refs)
 
@@ -141,7 +146,7 @@ def test_book_end_notes_grouped_by_chapter(grouped_book):
     try:
         pdf = PDFDocument(grouped_book)
         zm = ZoneManager(pdf)
-        az = SmartAutoZoner(pdf, zm, profile_manager.get_profile("CUPEPUB"), {})
+        az = SmartAutoZoner(pdf, zm, profile_manager.get_profile("BITS"), {})
         for p in range(1, pdf.page_count + 1):
             az.auto_zone_page(p)
     finally:
@@ -151,7 +156,7 @@ def test_book_end_notes_grouped_by_chapter(grouped_book):
     groups, cur = [], None
     for z in stream:
         plain = re.sub(r"<[^>]+>", "", z.text).strip()
-        if z.tag == "enhead":
+        if _is_heading(z, "notes"):
             cur = (plain, [])
             groups.append(cur)
         elif z.tag == "en" and not z.attributes.get("merged_with_previous"):

@@ -1,4 +1,4 @@
-"""Advanced Fidelity Compare window (spec: "EPUBForge - ADVANCED
+"""PDF <-> XML compare window (BITS Tool) - originally the Advanced Fidelity Compare (spec: "ADVANCED
 FIDELITY + CONTENT + UNICODE + LAYOUT COMPARISON") - the real
 implementation of the Launcher's COMPARISON card (previously a
 placeholder - see app/comparison/comparison_window.py's own docstring on
@@ -41,7 +41,7 @@ class FidelityCompareWindow:
         self.on_home = on_home
         palette = theme.current.palette
         self.win = tk.Toplevel(launcher_root)
-        self.win.title("EPUBForge - Advanced Fidelity Compare")
+        self.win.title("BITS Tool - PDF \u2194 XML Compare")
         self.win.geometry("1300x860")
         self.win.configure(bg=palette["app_bg"])
         self.win.protocol("WM_DELETE_WINDOW", self._go_home)
@@ -57,7 +57,7 @@ class FidelityCompareWindow:
         # PRODUCTION QA ENGINE" - "[OPEN ORIGINAL PDF] [OPEN GENERATED PDF]"
         # - a direct PDF<->PDF mode with NO EPUB required, additive to the
         # existing 3-input Full Fidelity mode, never a second window/engine.
-        self._mode_var = tk.StringVar(value="full")
+        self._mode_var = tk.StringVar(value="xhtml")      # PDF -> XML proof (BITS / JATS)
 
         self._build_header(palette)
         self._build_inputs(palette)
@@ -76,7 +76,7 @@ class FidelityCompareWindow:
                              font=theme.FONT_BODY_BOLD, cursor="hand2", padx=6)
         home_btn.pack(side=tk.LEFT, padx=(0, 10))
         home_btn.bind("<Button-1>", lambda e: self._go_home())
-        tk.Label(left, text="◈ EPUBForge - Advanced Fidelity Compare", bg=palette["header_bg"],
+        tk.Label(left, text="◈ BITS Tool - PDF \u2194 XML Compare", bg=palette["header_bg"],
                  fg=palette["header_fg"], font=theme.FONT_APP_TITLE).pack(side=tk.LEFT)
 
     def _build_inputs(self, palette):
@@ -90,15 +90,13 @@ class FidelityCompareWindow:
         tk.Radiobutton(mode_row, text="PDF <-> PDF (Direct)", variable=self._mode_var, value="direct",
                         bg=palette["panel_bg"], fg=palette["text"], selectcolor=palette["surface"],
                         command=self._apply_mode).pack(side=tk.LEFT, padx=(0, 12))
-        tk.Radiobutton(mode_row, text="PDF <-> EPUB <-> PDF (Full Fidelity)", variable=self._mode_var,
-                        value="full", bg=palette["panel_bg"], fg=palette["text"], selectcolor=palette["surface"],
-                        command=self._apply_mode).pack(side=tk.LEFT)
-        tk.Radiobutton(mode_row, text="PDF -> XHTML (Direct QA)", variable=self._mode_var,
+        tk.Radiobutton(mode_row, text="PDF -> XML (BITS / JATS proof)", variable=self._mode_var,
                         value="xhtml", bg=palette["panel_bg"], fg=palette["text"], selectcolor=palette["surface"],
                         command=self._apply_mode).pack(side=tk.LEFT, padx=(12, 0))
 
         self._original_row = self._path_row(frame, "Original PDF:", self._original_path, [("PDF files", "*.pdf")])
-        self._epub_row = self._path_row(frame, "Generated EPUB:", self._epub_path, [("EPUB files", "*.epub")])
+        self._epub_row = self._path_row(frame, "Generated XML:", self._epub_path,
+                                        [("XML files", "*.xml"), ("All files", "*.*")])
         self._converted_row = self._path_row(
             frame, "Generated PDF:", self._converted_path, [("PDF files", "*.pdf")])
 
@@ -115,12 +113,10 @@ class FidelityCompareWindow:
                                         font=theme.FONT_BODY)
         self.progress_label.pack(side=tk.LEFT, padx=12)
         self.save_xhtml_btn = tk.Button(
-            action_row, text="Save XHTML Report", command=self._save_xhtml_report,
+            action_row, text="Save XML Report", command=self._save_xhtml_report,
             state=tk.DISABLED, padx=12, pady=6
         )
         self.save_xhtml_btn.pack(side=tk.RIGHT)
-        tk.Button(action_row, text="Open QC Workspace", command=self._open_qc_workspace,
-                  padx=12, pady=6).pack(side=tk.RIGHT, padx=(0, 8))
 
     def _path_row(self, parent, label, var, filetypes):
         row = tk.Frame(parent, bg=parent["bg"])
@@ -165,14 +161,12 @@ class FidelityCompareWindow:
 
         else:
             self._epub_row.pack(fill=tk.X, pady=2, after=self._original_row)
-            # In this mode the EPUB field accepts either:
-            #   * .epub file
-            #   * unpacked EPUB/OEBPS directory
+            # the generated BITS / JATS XML file
             self._converted_row.pack_forget()
-            self.start_btn.configure(text="Compare PDF → XHTML")
+            self.start_btn.configure(text="Compare PDF → XML")
             self.save_xhtml_btn.configure(state=tk.DISABLED)
             self.progress_label.configure(
-                text="Direct content QA — no XHTML → PDF conversion"
+                text="Word-by-word proof of the XML against the PDF"
             )
 
             try:
@@ -184,25 +178,10 @@ class FidelityCompareWindow:
                 pass
 
     def _browse(self, var, filetypes):
-        if var is self._epub_path and self._mode_var.get() == "xhtml":
-            choice = messagebox.askyesno(
-                "PDF → XHTML",
-                "YES = select an EPUB file\n\n"
-                "NO = select an unpacked EPUB/OEBPS folder",
-                parent=self.win,
-            )
-            if choice:
-                path = filedialog.askopenfilename(
-                    parent=self.win,
-                    filetypes=[("EPUB files", "*.epub"), ("All files", "*.*")]
-                )
-            else:
-                path = filedialog.askdirectory(parent=self.win)
-        else:
-            path = filedialog.askopenfilename(
-                parent=self.win,
-                filetypes=filetypes
-            )
+        path = filedialog.askopenfilename(
+            parent=self.win,
+            filetypes=filetypes
+        )
         if path:
             var.set(path)
 
@@ -455,8 +434,8 @@ class FidelityCompareWindow:
         if mode == "xhtml":
             if not epub_path or not os.path.exists(epub_path):
                 messagebox.showwarning(
-                    "PDF → XHTML",
-                    "Choose an EPUB file or an unpacked EPUB/OEBPS folder.",
+                    "PDF → XML",
+                    "Choose the generated BITS / JATS XML file.",
                     parent=self.win,
                 )
                 return
@@ -1011,7 +990,7 @@ class FidelityCompareWindow:
 
         win = tk.Toplevel(self.win)
         self._fullscreen_proof = win
-        win.title("EPUBForge - PDF → XHTML Full Screen Proof")
+        win.title("BITS Tool - PDF → XML Full Screen Proof")
         win.configure(bg=theme.current.palette["app_bg"])
         win.attributes("-fullscreen", True)
         win.protocol("WM_DELETE_WINDOW", self._close_fullscreen_proof)
@@ -1429,16 +1408,6 @@ class FidelityCompareWindow:
         found = self.difference_panel.apply_filter_and_select_first(filter_name)
         if not found:
             messagebox.showinfo("Advanced Fidelity Compare", f"No differences found for: {filter_name}")
-
-    def _open_qc_workspace(self):
-        """PDF <-> XHTML QC workspace (mapping, visual comparison,
-        auto-correction, split management) on the same Original PDF and
-        Generated EPUB."""
-        from app.qc import qc_window
-        pdf = self._original_path.get().strip()
-        epub = self._epub_path.get().strip()
-        qc_window.open_window(self.launcher_root, None, pdf_path=pdf or None, epub_path=epub or None,
-                              master=self.win)
 
     def _go_home(self):
         self._close_fullscreen_proof()

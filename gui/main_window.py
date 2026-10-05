@@ -82,7 +82,7 @@ class App:
         theme.apply_ttk_style(root, theme.current.palette)
 
         self.root = root
-        self.root.title("EPUBForge - PDF Zoning & Conversion")
+        self.root.title("BITS Tool - PDF Zoning & BITS / JATS XML")
         # Responsive desktop layout (spec 66.24 - 1366x768 up to 2560x1440):
         # a hardcoded 1400x900 request is WIDER than the spec's own stated
         # minimum resolution and was confirmed (via direct screenshot
@@ -120,7 +120,7 @@ class App:
         # active_tag_buttons/active_tag_colors are what TagPanel/ZoneInfoDialog's
         # "Change Tag" combobox actually read; switching profiles never deletes
         # or retags any existing zone, only which buttons are offered next.
-        self.active_profile = profile_manager.get_profile(self.settings.get("profile", "XML"))
+        self.active_profile = profile_manager.get_profile(self.settings.get("profile", profile_manager.DEFAULT_PROFILE_NAME))
         self.active_tag_buttons = profile_manager.tag_buttons_of(self.active_profile)
         # Centralized, debounced, crash-safe autosave (spec: "ZONING -
         # CUPPEUB DEFAULT PROFILE + CONTINUOUS AUTOSAVE") - ONE service for
@@ -199,13 +199,13 @@ class App:
             home_btn.bind("<Button-1>", lambda e: self._go_home())
             home_btn.bind("<Enter>", lambda e: home_btn.config(fg=palette["accent"]))
             home_btn.bind("<Leave>", lambda e: home_btn.config(fg=palette["header_fg_muted"]))
-        tk.Label(left, text="◈ EPUBForge", bg=palette["header_bg"], fg=palette["header_fg"],
+        tk.Label(left, text="◈ BITS Tool", bg=palette["header_bg"], fg=palette["header_fg"],
                   font=theme.FONT_APP_TITLE).pack(side=tk.LEFT)
         tk.Label(left, text="  PDF Zoning & Conversion", bg=palette["header_bg"], fg=palette["header_fg_muted"],
                   font=theme.FONT_BODY).pack(side=tk.LEFT)
         right = tk.Frame(header, bg=palette["header_bg"])
         right.pack(side=tk.RIGHT, padx=14)
-        self.profile_badge = tk.Label(right, text="XML", bg=palette["accent"], fg=palette["accent_fg"],
+        self.profile_badge = tk.Label(right, text=profile_manager.DEFAULT_PROFILE_NAME, bg=palette["accent"], fg=palette["accent_fg"],
                                         font=theme.FONT_SMALL_BOLD, padx=8, pady=2)
         self.profile_badge.pack(side=tk.RIGHT, padx=(10, 0))
         tk.Label(right, text="Profile:", bg=palette["header_bg"], fg=palette["header_fg_muted"],
@@ -287,7 +287,7 @@ class App:
         self.toolbar.set_undo_redo_enabled(False, False)
         self._build_context_menu()
         self.viewer.canvas.bind("<Configure>", self._on_viewer_resize)
-        self.set_profile(self.settings.get("profile", "XML"), persist=False)
+        self.set_profile(self.settings.get("profile", profile_manager.DEFAULT_PROFILE_NAME), persist=False)
         # Standalone entry point (run() below) closes via the window's own
         # [X] button - flush any pending autosave first (spec section 28).
         # The Launcher's embedded entry point (app/launcher/launcher_window.
@@ -517,7 +517,7 @@ class App:
         theme settings."""
         new_mode = "dark" if theme.current.palette["mode"] == "light" else "light"
         ui_prefs.save_ui_prefs({"theme": new_mode})
-        messagebox.showinfo("Theme", f"Switched to {new_mode.title()} theme.\nRestart EPUBForge to apply it.")
+        messagebox.showinfo("Theme", f"Switched to {new_mode.title()} theme.\nRestart the BITS Tool to apply it.")
 
     def set_display_toggle(self, key: str, value: bool):
         """Show Zone Borders / Show Tag Labels / Show Reading Order (spec
@@ -1177,7 +1177,7 @@ class App:
             return
         path = filedialog.asksaveasfilename(
             initialdir=str(APP_ROOT / "projects"), defaultextension=".json",
-            filetypes=[("EPUBForge project", "*.json")])
+            filetypes=[("BITS Tool project", "*.json")])
         if not path:
             return
         project_manager.save_project(
@@ -1195,7 +1195,7 @@ class App:
 
     def load_project(self):
         path = filedialog.askopenfilename(
-            initialdir=str(APP_ROOT / "projects"), filetypes=[("EPUBForge project", "*.json")])
+            initialdir=str(APP_ROOT / "projects"), filetypes=[("BITS Tool project", "*.json")])
         if not path:
             return
         data = project_manager.load_project(path)
@@ -1263,7 +1263,7 @@ class App:
         debug_log.set_enabled(self.settings.get("debug_logging", False))
         self._log_scroll_diagnostic_env()
         self.toolbar.sync_display_toggles(self.settings)
-        self.set_profile(self.settings.get("profile", "XML"), persist=False)
+        self.set_profile(self.settings.get("profile", profile_manager.DEFAULT_PROFILE_NAME), persist=False)
         self.zoom = data.get("zoom", DEFAULT_ZOOM) or DEFAULT_ZOOM
         self.current_page = 1
         self.overlapping_zone_ids = set()  # never carries over from a previous project
@@ -1318,7 +1318,7 @@ class App:
         accumulates templates - self.reference_template is their merge
         (layout_template.merge_templates), recomputed each time."""
         path = filedialog.askopenfilename(
-            initialdir=str(APP_ROOT / "projects"), filetypes=[("EPUBForge project", "*.json")],
+            initialdir=str(APP_ROOT / "projects"), filetypes=[("BITS Tool project", "*.json")],
             title="Load Reference Project")
         if not path:
             return
@@ -2266,7 +2266,7 @@ class App:
             return
         path = filedialog.asksaveasfilename(
             initialdir=str(APP_ROOT / "projects"), defaultextension=".json",
-            filetypes=[("EPUBForge project", "*.json")],
+            filetypes=[("BITS Tool project", "*.json")],
             title="Save Corrections as Template (new file - never overwrites the original reference)")
         if not path:
             return
@@ -2944,7 +2944,7 @@ class App:
             "AUTO ZONE\n\n"
             "Load Reference Project\n"
             "    Pick an already-correctly-zoned project JSON (a normal\n"
-            "    Save Project file). EPUBForge learns its layout/semantic\n"
+            "    Save Project file). the BITS Tool learns its layout/semantic\n"
             "    patterns (normalized position, size, font, list markers,\n"
             "    text patterns) - never raw coordinates. Click it again\n"
             "    with a different project to add more references; their\n"
@@ -3085,7 +3085,8 @@ class App:
         try:
             res = bits_pipeline.generate(
                 self.zone_manager, self.pdf_document, kind, str(output_path), str(assets_dir), prefix=id_prefix,
-                settings=self.settings.get("bits_meta") or {},
+                settings=dict(self.settings.get("bits_meta") or {},
+                              bits_dtd_path=self.settings.get("bits_dtd_path", "")),
                 jpeg_quality=self.settings.get("jpeg_quality", 95),
                 image_dpi=self.settings.get("image_dpi", 200),
                 remove_image_background=self.settings.get("remove_image_background", False))

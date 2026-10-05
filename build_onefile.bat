@@ -3,9 +3,9 @@ setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
 echo ============================================================
-echo EPUBForge - OPTIONAL Single-File Build (onefile)
+echo BITSTool - OPTIONAL Single-File Build (onefile)
 echo NOTE: the onedir build (build_exe.bat) is the primary,
-echo       recommended production package - see EPUBForge_onefile.spec
+echo       recommended production package - see BITSTool_onefile.spec
 echo       for why. Use this only if a single EXE is specifically needed.
 echo ============================================================
 
@@ -15,8 +15,8 @@ if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
 
 echo.
-echo [2/3] Running PyInstaller (EPUBForge_onefile.spec) ...
-python -m PyInstaller EPUBForge_onefile.spec --noconfirm
+echo [2/3] Running PyInstaller (BITSTool_onefile.spec) ...
+python -m PyInstaller BITSTool_onefile.spec --noconfirm
 if errorlevel 1 (
     echo.
     echo ============================================================
@@ -40,6 +40,6 @@ echo.
 echo ============================================================
 echo BUILD SUCCEEDED
 echo.
-echo   Executable: %~dp0dist\EPUBForge.exe
+echo   Executable: %~dp0dist\BITSTool.exe
 echo ============================================================
 exit /b 0

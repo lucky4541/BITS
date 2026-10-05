@@ -37,7 +37,7 @@ def log_path() -> str:
     global _log_path
 
     if _log_path is None:
-        _log_path = writable_path("logs", "EPUBForge.log")
+        _log_path = writable_path("logs", "BITSTool.log")
         os.makedirs(os.path.dirname(_log_path), exist_ok=True)
 
     return _log_path
@@ -163,8 +163,8 @@ def _show_error_dialog():
 
         try:
             messagebox.showerror(
-                "EPUBForge - Unexpected Error",
-                "EPUBForge encountered an unexpected error and needs to close.\n\n"
+                "BITS Tool - Unexpected Error",
+                "BITS Tool encountered an unexpected error and needs to close.\n\n"
                 f"Details were written to:\n{log_path()}",
                 parent=root,
             )

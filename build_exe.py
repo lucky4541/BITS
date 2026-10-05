@@ -1,5 +1,5 @@
 """
-ZoneTool / EPUBForge Windows EXE Builder
+ZoneTool / BITSTool Windows EXE Builder
 
 Run this file from the ZoneTool project folder:
 
@@ -11,7 +11,7 @@ Debug build:
 
 The generated application is:
 
-    dist\\EPUBForge\\EPUBForge.exe
+    dist\\BITSTool\\BITSTool.exe
 
 IMPORTANT
 ---------
@@ -19,16 +19,16 @@ This builder keeps the project structure used by the development version.
 
 In particular:
 
-    profiles\\CUPEPUB\\Mapping.xml
-    profiles\\CUPEPUB\\CUPEPUB_Zoning.xml
+    profiles\\bits_profile.json, profiles\\jats_profile.json
+    profiles\\BITS\\, profiles\\JATS\\ (semantic roles, DTDs)
 
 are copied to:
 
-    _internal\\profiles\\CUPEPUB\\
+    _internal\\profiles\\
 
-Do NOT change Mapping.xml or mapping_engine.py just to fix an EXE
+Do NOT change the BITS / JATS conversion code just to fix an EXE
 resource problem. The development version already proves that the
-mapping logic works.
+conversion logic works.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 ENTRY = ROOT / "main.py"
 
-APP_NAME = "EPUBForge"
+APP_NAME = "BITSTool"
 
 DIST = ROOT / "dist"
 BUILD = ROOT / "build"
@@ -106,11 +106,11 @@ EXTRA_FOLDERS = [
 #
 # Development:
 #
-#     profiles\\CUPEPUB\\Mapping.xml
+#     profiles\\bits_profile.json, profiles\\JATS\\dtd\\...
 #
 # EXE:
 #
-#     _internal\\profiles\\CUPEPUB\\Mapping.xml
+#     _internal\\profiles\\bits_profile.json, ...
 # ============================================================
 
 REQUIRED_DATA_FOLDERS = [
@@ -270,22 +270,24 @@ def check_required_data() -> None:
 
         print("[OK] Folder:", folder)
 
-    # Specifically verify the CUPEPUB profile because this is
-    # required by the EPUB generation/mapping pipeline.
+    # Specifically verify the BITS / JATS profiles (tag lists, Auto Tag
+    # vocabulary, the JATS DTD the output is validated against).
     profiles = ROOT / "profiles"
-    cupepub = profiles / "CUPEPUB"
+    bits_dir = profiles / "BITS"
 
-    if not cupepub.is_dir():
+    if not bits_dir.is_dir():
         raise SystemExit(
-            "\nERROR: CUPEPUB profile folder was not found:\n"
-            f"    {cupepub}"
+            "\nERROR: BITS profile folder was not found:\n"
+            f"    {bits_dir}"
         )
 
-    print("[OK] CUPEPUB profile:", cupepub)
+    print("[OK] BITS profile:", bits_dir)
 
     required_files = [
-        cupepub / "Mapping.xml",
-        cupepub / "CUPEPUB_Zoning.xml",
+        profiles / "bits_profile.json",
+        profiles / "jats_profile.json",
+        bits_dir / "semantic_roles.json",
+        profiles / "JATS" / "dtd" / "JATS-journalpublishing1-4-mathml3.dtd",
     ]
 
     for file_path in required_files:
@@ -510,8 +512,8 @@ def build(
     #
     # This is the critical part for:
     #
-    # profiles/CUPEPUB/Mapping.xml
-    # profiles/CUPEPUB/CUPEPUB_Zoning.xml
+    # profiles/bits_profile.json, profiles/jats_profile.json
+    # profiles/BITS, profiles/JATS (semantic roles, DTDs)
     # --------------------------------------------------------
 
     for folder_name in REQUIRED_DATA_FOLDERS:
@@ -726,10 +728,14 @@ def build(
     internal = application_folder / "_internal"
 
     packaged_profiles = internal / "profiles"
-    packaged_cupepub = packaged_profiles / "CUPEPUB"
 
-    packaged_mapping = packaged_cupepub / "Mapping.xml"
-    packaged_zoning = packaged_cupepub / "CUPEPUB_Zoning.xml"
+    packaged_required = [
+        packaged_profiles / "bits_profile.json",
+        packaged_profiles / "jats_profile.json",
+        packaged_profiles / "BITS" / "semantic_roles.json",
+        packaged_profiles / "JATS" / "semantic_roles.json",
+        packaged_profiles / "JATS" / "dtd" / "JATS-journalpublishing1-4-mathml3.dtd",
+    ]
 
     print()
     print("=" * 70)
@@ -746,49 +752,13 @@ def build(
     else:
         print("[OK] _internal:", internal)
 
-    if packaged_profiles.is_dir():
-        print(
-            "[OK] profiles:",
-            packaged_profiles,
-        )
-    else:
-        print(
-            "[ERROR] profiles folder missing:",
-            packaged_profiles,
-        )
-
-    if packaged_cupepub.is_dir():
-        print(
-            "[OK] CUPEPUB:",
-            packaged_cupepub,
-        )
-    else:
-        print(
-            "[ERROR] CUPEPUB folder missing:",
-            packaged_cupepub,
-        )
-
-    if packaged_mapping.is_file():
-        print(
-            "[OK] Mapping.xml:",
-            packaged_mapping,
-        )
-    else:
-        print(
-            "[ERROR] Mapping.xml missing:",
-            packaged_mapping,
-        )
-
-    if packaged_zoning.is_file():
-        print(
-            "[OK] CUPEPUB_Zoning.xml:",
-            packaged_zoning,
-        )
-    else:
-        print(
-            "[ERROR] CUPEPUB_Zoning.xml missing:",
-            packaged_zoning,
-        )
+    missing = []
+    for path in packaged_required:
+        if path.is_file():
+            print("[OK]", path)
+        else:
+            print("[ERROR] missing:", path)
+            missing.append(path)
 
     print("=" * 70)
 
@@ -796,7 +766,7 @@ def build(
     # FINAL RESULT
     # --------------------------------------------------------
 
-    if not packaged_mapping.is_file() or not packaged_zoning.is_file():
+    if missing:
 
         raise SystemExit(
             "\nBUILD COMPLETED, BUT REQUIRED PROFILE FILES ARE "
@@ -815,8 +785,8 @@ def build(
 
     print()
     print("Verified:")
-    print("  [OK] profiles/CUPEPUB/Mapping.xml")
-    print("  [OK] profiles/CUPEPUB/CUPEPUB_Zoning.xml")
+    for path in packaged_required:
+        print("  [OK]", path.relative_to(internal))
 
     print("=" * 70)
     print()
@@ -829,7 +799,7 @@ def build(
 def main() -> None:
 
     parser = argparse.ArgumentParser(
-        description="Build EPUBForge Windows EXE with PyInstaller."
+        description="Build BITSTool Windows EXE with PyInstaller."
     )
 
     parser.add_argument(

@@ -39,7 +39,9 @@ BACK_PART_TYPES = {"appendix", "notes", "glossary", "bibliography", "index"}
 BOOK_META_TAGS = ("book-title", "book-subtitle", "contrib", "aff", "series-title", "publisher-name",
                   "publisher-loc", "isbn", "copyright-statement", "edition")
 ARTICLE_META_TAGS = ("article-title", "subtitle", "contrib", "aff", "corresp", "author-note", "abstract", "kwd",
-                     "history", "copyright-statement", "article-doi")
+                     "history", "copyright-statement", "article-doi",
+                     # book metadata zones met in an article (a project switched from BITS)
+                     "book-title", "book-subtitle", "isbn", "publisher-name", "publisher-loc", "chapter-contrib")
 LIST_TYPES = {"number": "order", "numbered": "order", "decimal": "order", "upper-alpha": "alpha-upper",
               "lower-alpha": "alpha-lower", "upper-roman": "roman-upper", "lower-roman": "roman-lower"}
 _NUM_LABEL_RE = re.compile(r"^\s*(\[?\d+[a-z]?\]?|[*†‡§]+)[.)]?\s+")
@@ -912,10 +914,26 @@ def build_jats_article(gen_root, settings=None, prefix="a"):
     art.set("dtd-version", "1.4")
     art.set(XML_LANG, settings.get("language", "en"))
     front = etree.SubElement(art, "front")
-    front.append(_journal_meta(settings))
+    jm = _journal_meta(settings)
+    if meta["publisher-name"] and jm.find("publisher") is None:
+        pub = etree.SubElement(jm, "publisher")
+        pn = _el("publisher-name")
+        for n in meta["publisher-name"]:
+            _move_content(n, pn)
+        pub.append(pn)
+        for loc in meta["publisher-loc"]:
+            pl = _el("publisher-loc")
+            _move_content(loc, pl)
+            pub.append(pl)
+    elif meta["publisher-name"] or meta["publisher-loc"]:
+        for n in meta["publisher-name"] + meta["publisher-loc"]:       # never dropped
+            n.tag = "p"
+            n.set("content-type", "publisher")
+            meta.setdefault("_body", []).append(n)
+    front.append(jm)
     front.append(_article_meta(meta, settings, ids))
     b = etree.SubElement(art, "body")
-    b.extend(_as_blocks(body))
+    b.extend(_as_blocks(meta.get("_body", []) + body))
     if back_secs or notes or refs:
         back = etree.SubElement(art, "back")
         for s in back_secs:
@@ -991,17 +1009,17 @@ def _article_meta(meta, settings, ids):
         am.append(_el("article-id", doi, pub_id_type="doi"))
     tg = etree.SubElement(am, "title-group")
     at = _el("article-title")
-    for t in meta["article-title"]:
+    for t in meta["article-title"] + meta["book-title"]:
         if len(at) or at.text:
             at.append(_el("break"))
         _move_content(t, at)
     tg.append(at)
-    for s in meta["subtitle"]:
+    for s in meta["subtitle"] + meta["book-subtitle"]:
         st = _el("subtitle")
         _move_content(s, st)
         tg.append(st)
-    if meta["contrib"]:
-        am.append(_contrib_group(meta["contrib"], ids))
+    if meta["contrib"] or meta["chapter-contrib"]:
+        am.append(_contrib_group(meta["contrib"] + meta["chapter-contrib"], ids))
     for a in meta["aff"]:
         aff = _el("aff", id=ids.next("aff"))
         _move_content(a, aff)
@@ -1017,6 +1035,8 @@ def _article_meta(meta, settings, ids):
     if settings.get("pub_year"):
         pd = etree.SubElement(am, "pub-date", {"publication-format": "print", "date-type": "pub"})
         pd.append(_el("year", str(settings["pub_year"])))
+    for i in meta["isbn"]:
+        am.append(_isbn_el(i))
     for k, tag in (("volume", "volume"), ("issue", "issue"), ("fpage", "fpage"), ("lpage", "lpage")):
         if settings.get(k):
             am.append(_el(tag, str(settings[k])))

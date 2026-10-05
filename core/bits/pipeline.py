@@ -204,3 +204,25 @@ def fix_file(path: str, out_path: str = None, kind: str = None, settings: dict =
     out_path = out_path or os.path.splitext(path)[0] + ".fixed.xml"
     write(root, out_path, kind, settings, model)
     return out_path, rep
+
+
+def preview(zone_manager, pdf_document, kind: str, settings: dict = None, prefix: str = "preview"):
+    """(root, errors_before_fix, errors_after_fix, lost_words) without
+    writing any output file (images go to a temporary folder) - used by the
+    validation report."""
+    import shutil
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix="bits_preview_")
+    try:
+        gen = xml_generator.XMLGenerator(zone_manager, pdf_document, tmp, prefix, split_back_matter=False)
+        gen_root = gen.generate_tree()
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    words0 = structure.content_signature(gen_root)
+    root = structure.build(kind, gen_root, settings or {}, prefix=prefix)
+    if not dtd.available(kind, settings):
+        return root, None, None, structure.lost_words(words0, structure.content_signature(root)
+                                                          + list(structure.DECLARED))
+    rep = autofix.fix(root, dtd.load(kind, settings), id_prefix=prefix)
+    lost = structure.lost_words(words0, structure.content_signature(root) + list(structure.DECLARED))
+    return root, rep.errors_before, rep.errors_after, lost

@@ -1,17 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller build spec for EPUBForge (formerly ZoneTool - internal
+"""PyInstaller build spec for the BITS Tool (PDF zoning -> BITS 2.2 / JATS 1.4 XML).
 module/package names are unchanged, only the shipped product name).
 
-Produces dist/EPUBForge/EPUBForge.exe (onedir - the primary, reliable
-production build; see EPUBForge_onefile.spec for the optional single-file
+Produces dist/BITSTool/BITSTool.exe (onedir - the primary, reliable
+production build; see BITSTool_onefile.spec for the optional single-file
 variant).
 
 Bundled READ-ONLY application resources (resolved at runtime via
 core.resource_path.resource_path, which points at sys._MEIPASS - the
 _internal/ folder beside the EXE for this onedir build):
-  - profiles/xml_profile.json, profiles/epub_profile.json
-  - profiles/CUPEPUB/*.xml (Profile, Zoning, Master, AutoStyling,
-    Character, ZoneValidation, CUPLookup, Mapping)
+  - profiles/bits_profile.json, profiles/jats_profile.json
+  - profiles/BITS, profiles/JATS (semantic roles, DTDs)
 
 NOT bundled (deliberately - see the build's own final report, not
 guessed here): profiles/_reserved/TandF_Zoning.xml (confirmed unused by
@@ -28,32 +27,25 @@ future build environment has them installed, PyInstaller's own import-graph
 analysis will pick them up automatically the next time this spec is built -
 no spec change needed.
 """
+import os
 from PyInstaller.utils.hooks import collect_data_files
 
 datas = [
-    ('profiles/xml_profile.json', 'profiles'),
-    ('profiles/epub_profile.json', 'profiles'),
-    ('profiles/CUPEPUB/CUPEPUB_Profile.xml', 'profiles/CUPEPUB'),
-    ('profiles/CUPEPUB/CUPEPUB_Zoning.xml', 'profiles/CUPEPUB'),
-    ('profiles/CUPEPUB/CUPEPUB_Master.xml', 'profiles/CUPEPUB'),
-    ('profiles/CUPEPUB/CUPEPUB_AutoStyling.xml', 'profiles/CUPEPUB'),
-    ('profiles/CUPEPUB/CUPEPUB_Character.xml', 'profiles/CUPEPUB'),
-    ('profiles/CUPEPUB/CUPEPUB_ZoneValidation.xml', 'profiles/CUPEPUB'),
-    ('profiles/CUPEPUB/CUPLookup.xml', 'profiles/CUPEPUB'),
-    ('profiles/CUPEPUB/Mapping.xml', 'profiles/CUPEPUB'),
+    ('profiles/bits_profile.json', 'profiles'),
+    ('profiles/jats_profile.json', 'profiles'),
+    ('profiles/BITS/semantic_roles.json', 'profiles/BITS'),
+    ('profiles/JATS/semantic_roles.json', 'profiles/JATS'),
 ]
-# The EPUBForge "XHTML Profile" system's client-structure configs (see
-# core/xhtml_profile_manager.py) - read fresh from JSON at runtime via
-# core.resource_path.resource_path, so every profiles/xhtml/*.json must be
-# bundled the same way the CUPEPUB configs above are, or a packaged build
-# would only ever see unconfigured placeholders.
 import glob
-datas += [(f, 'profiles/xhtml') for f in glob.glob('profiles/xhtml/*.json')]
-# Auto Zone / Auto Tag engine (CUPEPUB): semantic role vocabulary, plus any
-# project DTD(s) and reference XML corpus dropped into the profile folder.
-datas += [('profiles/CUPEPUB/semantic_roles.json', 'profiles/CUPEPUB')]
-datas += [(f, 'profiles/CUPEPUB') for f in glob.glob('profiles/CUPEPUB/*.dtd')]
-datas += [(f, 'profiles/CUPEPUB/reference_xml') for f in glob.glob('profiles/CUPEPUB/reference_xml/*.*ml')]
+# JATS 1.4 DTD (bundled, public domain) and the BITS 2.2 DTD once installed
+# in profiles/BITS/dtd/ - every module / entity file, keeping the folders
+for base in ('profiles/JATS/dtd', 'profiles/BITS/dtd'):
+    for f in glob.glob(base + '/**/*', recursive=True):
+        if os.path.isfile(f):
+            datas.append((f, os.path.dirname(f)))
+# reference BITS / JATS XML corpus for Auto Tag (optional)
+for kind in ('BITS', 'JATS'):
+    datas += [(f, f'profiles/{kind}/reference_xml') for f in glob.glob(f'profiles/{kind}/reference_xml/*.*ml')]
 # fitz/PyMuPDF ships its own font resources; fontTools' 'agl' submodule
 # carries the Adobe Glyph List data table core/glyph_fidelity.py reads at
 # runtime - both are real runtime data dependencies, not just importable
@@ -73,11 +65,7 @@ hiddenimports = [
     'fontTools.ttLib', 'fontTools.agl',
     'numpy', 'cv2',
     'tkinter', 'tkinter.ttk', 'tkinter.filedialog', 'tkinter.messagebox',
-    # client rules (core.epub.client_rules): EPUB-010 reads files as UTF-7 like the client's tool
-    'encodings.utf_7',
-    # PDF <-> XHTML QC workspace (app.qc / core.qc)
-    'tkinter.simpledialog', 'tkinter.colorchooser', 'PIL.ImageOps', 'PIL.ImageChops', 'PIL.ImageFilter',
-    'app.qc.qc_window', 'core.qc.engine',
+    'tkinter.simpledialog', 'tkinter.colorchooser',
 ]
 
 a = Analysis(
@@ -101,7 +89,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='EPUBForge',
+    name='BITSTool',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -121,5 +109,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='EPUBForge',
+    name='BITSTool',
 )

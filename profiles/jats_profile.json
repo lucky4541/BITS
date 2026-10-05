@@ -21,308 +21,414 @@
     {
       "label": "Article Title",
       "tag": "article-title",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Article Title"
+      }
     },
     {
       "label": "Subtitle",
       "tag": "subtitle",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Subtitle"
+      }
     },
     {
       "label": "Author",
       "tag": "contrib",
       "attrs": {
-        "@contrib-type": "author"
+        "@contrib-type": "author",
+        "tag_label": "Author"
       }
     },
     {
       "label": "Affiliation",
       "tag": "aff",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Affiliation"
+      }
     },
     {
       "label": "Corresponding Author",
       "tag": "corresp",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Corresponding Author"
+      }
     },
     {
       "label": "Author Notes",
       "tag": "author-note",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Author Notes"
+      }
     },
     {
       "label": "Abstract",
       "tag": "abstract",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Abstract"
+      }
     },
     {
       "label": "Keywords",
       "tag": "kwd",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Keywords"
+      }
     },
     {
       "label": "Received / Accepted dates",
       "tag": "history",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Received / Accepted dates"
+      }
     },
     {
       "label": "Copyright",
       "tag": "copyright-statement",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Copyright"
+      }
     },
     {
       "label": "DOI",
       "tag": "article-doi",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "DOI"
+      }
     },
     {
       "label": "Heading 1",
       "tag": "h1",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Heading 1"
+      }
     },
     {
       "label": "Heading 2",
       "tag": "h2",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Heading 2"
+      }
     },
     {
       "label": "Heading 3",
       "tag": "h3",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Heading 3"
+      }
     },
     {
       "label": "Heading 4",
       "tag": "h4",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Heading 4"
+      }
     },
     {
       "label": "Heading 5",
       "tag": "h5",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Heading 5"
+      }
     },
     {
       "label": "Heading 6",
       "tag": "h6",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Heading 6"
+      }
     },
     {
       "label": "Title Group",
       "tag": "title-group",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Title Group"
+      }
     },
     {
       "label": "Title",
       "tag": "title",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Title"
+      }
     },
     {
       "label": "Paragraph",
       "tag": "p",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Paragraph"
+      }
     },
     {
       "label": "Extract / Quote",
       "tag": "disp-quote",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Extract / Quote"
+      }
     },
     {
       "label": "Epigraph",
       "tag": "epigraph",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Epigraph"
+      }
     },
     {
       "label": "Verse Line",
       "tag": "verse-line",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Verse Line"
+      }
     },
     {
       "label": "Speech",
       "tag": "speech",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Speech"
+      }
     },
     {
       "label": "Statement (Theorem...)",
       "tag": "statement",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Statement (Theorem...)"
+      }
     },
     {
       "label": "Code / Preformat",
       "tag": "preformat",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Code / Preformat"
+      }
     },
     {
       "label": "Definition Term",
       "tag": "term",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Definition Term"
+      }
     },
     {
       "label": "Definition",
       "tag": "def",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Definition"
+      }
     },
     {
       "label": "Label",
       "tag": "label",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Label"
+      }
     },
     {
       "label": "Page Number",
       "tag": "pagenumber",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Page Number"
+      }
     },
     {
       "label": "List Bullet",
       "tag": "list-bullet",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "List Bullet"
+      }
     },
     {
       "label": "List Number",
       "tag": "list",
       "attrs": {
-        "list_type": "order"
+        "list_type": "order",
+        "tag_label": "List Number"
       }
     },
     {
       "label": "List Alpha",
       "tag": "list",
       "attrs": {
-        "list_type": "alpha-upper"
+        "list_type": "alpha-upper",
+        "tag_label": "List Alpha"
       }
     },
     {
       "label": "List Lower Alpha",
       "tag": "list",
       "attrs": {
-        "list_type": "alpha-lower"
+        "list_type": "alpha-lower",
+        "tag_label": "List Lower Alpha"
       }
     },
     {
       "label": "List Roman",
       "tag": "list",
       "attrs": {
-        "list_type": "roman-lower"
+        "list_type": "roman-lower",
+        "tag_label": "List Roman"
       }
     },
     {
       "label": "List Simple",
       "tag": "list",
       "attrs": {
-        "list_type": "simple"
+        "list_type": "simple",
+        "tag_label": "List Simple"
       }
     },
     {
       "label": "List Item",
       "tag": "list-item",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "List Item"
+      }
     },
     {
       "label": "Figure",
       "tag": "figure",
-      "attrs": {}
+      "attrs": {
+        "asset_kind": "figure",
+        "tag_label": "Figure"
+      }
     },
     {
       "label": "Caption",
       "tag": "caption",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Caption"
+      }
     },
     {
       "label": "Graphic",
       "tag": "graphic",
-      "attrs": {}
+      "attrs": {
+        "asset_kind": "figure",
+        "tag_label": "Graphic"
+      }
     },
     {
       "label": "Equation (display)",
       "tag": "equation",
-      "attrs": {}
+      "attrs": {
+        "asset_kind": "equation",
+        "tag_label": "Equation (display)"
+      }
     },
     {
       "label": "Table",
       "tag": "table",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Table"
+      }
     },
     {
       "label": "Table Draw",
       "tag": "table",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Table Draw"
+      }
     },
     {
       "label": "Table Caption",
       "tag": "table-caption",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Table Caption"
+      }
     },
     {
       "label": "Table Wrap Foot",
       "tag": "table-wrap-foot",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Table Wrap Foot"
+      }
     },
     {
       "label": "Boxed Text",
       "tag": "boxed-text",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Boxed Text"
+      }
     },
     {
       "label": "Boxed Text Start",
       "tag": "boxed-text-start",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Boxed Text Start"
+      }
     },
     {
       "label": "Boxed Text End",
       "tag": "boxed-text-end",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Boxed Text End"
+      }
     },
     {
       "label": "Footnote",
       "tag": "fn",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Footnote"
+      }
     },
     {
       "label": "Endnote",
       "tag": "en",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Endnote"
+      }
     },
     {
       "label": "Bibliography",
       "tag": "bibliography",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Bibliography"
+      }
     },
     {
       "label": "Reference",
       "tag": "reference",
-      "attrs": {}
+      "attrs": {
+        "tag_label": "Reference"
+      }
     },
     {
       "label": "Acknowledgments Title",
       "tag": "h1",
       "attrs": {
-        "part_type": "ack"
+        "part_type": "ack",
+        "tag_label": "Acknowledgments Title"
       }
     },
     {
       "label": "Appendix Title",
       "tag": "h1",
       "attrs": {
-        "part_type": "appendix"
+        "part_type": "appendix",
+        "tag_label": "Appendix Title"
       }
     },
     {
       "label": "Notes Title",
       "tag": "h1",
       "attrs": {
-        "part_type": "notes"
+        "part_type": "notes",
+        "tag_label": "Notes Title"
       }
     },
     {
       "label": "Glossary Title",
       "tag": "h1",
       "attrs": {
-        "part_type": "glossary"
+        "part_type": "glossary",
+        "tag_label": "Glossary Title"
       }
     },
     {
       "label": "References Title",
       "tag": "h1",
       "attrs": {
-        "part_type": "bibliography"
+        "part_type": "bibliography",
+        "tag_label": "References Title"
       }
     }
   ],

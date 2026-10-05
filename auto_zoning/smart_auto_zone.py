@@ -472,7 +472,7 @@ def record_manual_retag(settings: dict, zone, old_tag, old_attrs):
     role = old_attrs.get("auto_role")
     if not role:
         return
-    label = zone.attributes.get("cup_name") or zone.tag
+    label = zone.attributes.get("tag_label") or zone.attributes.get("cup_name") or zone.tag
     learning = settings.setdefault("auto_tag_learning", {})
     per_role = learning.setdefault(role, {})
     per_role[label] = per_role.get(label, 0) + 1

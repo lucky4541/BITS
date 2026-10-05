@@ -1,10 +1,8 @@
-# CUPEPUB Auto Zone / Auto Tag / Character-Formatting Engine
+# Auto Zone / Auto Tag / Character-Formatting Engine
 
-Scope: **CUPEPUB profile only.** XML and EPUB profiles behave exactly as before
-(verified byte-identical output); the engine's menu refuses to run on them and
-character decorations are only extracted while CUPEPUB is active.
+Scope: the **BITS** and **JATS** profiles.
 
-Menu: **File › Auto Zone / Auto Tag (CUPEPUB)**.
+Menu: **File › Auto Zone / Auto Tag (BITS / JATS)**.
 
 ## Pipeline
 
@@ -25,7 +23,8 @@ PDF page
  └ auto_zoning/smart_auto_zone  page / document runs, caches, resume, cancel,
                                 lock + manual-override protection
  └ ZoneManager (existing)       zones carry tag + attributes; text keeps inline markup
- └ EpubXmlGenerator -> core/tag_normalizer -> Mapping.xml -> XHTML  (existing path)
+ └ XMLGenerator -> core/tag_normalizer -> core/bits/structure -> core/bits/autofix
+                                -> BITS book / JATS article (DTD validated)
  └ core/auto_validation         9-stage validation report
 ```
 
@@ -33,15 +32,14 @@ PDF page
 
 No tag names are hard-coded in the engine. Semantic **roles** (paragraph, verse
 line, footnote, ...) are described as concept words in
-`profiles/CUPEPUB/semantic_roles.json` and resolved to the project's own tags by
+`profiles/BITS/semantic_roles.json` / `profiles/JATS/semantic_roles.json` and resolved to the project's own tags by
 matching against:
 
 | Source | What it contributes |
 |---|---|
-| `CUPEPUB_Zoning.xml` + `CUPLookup.xml` (via `cup_config`) | tag inventory, labels, attributes, categories, image tags |
-| `Mapping.xml` | families (enclose rules), parent/child XPaths, section openers, output class / epub:type / role tokens, reverse map XHTML → zone tag |
-| `profiles/CUPEPUB/*.dtd` or *Load Project DTD* | content models, allowed children, ordering (Glushkov follow sets), cardinality, required / enumerated attributes, full validation |
-| `profiles/CUPEPUB/reference_xml/` or *Load Reference XML Corpus* | frequencies, succession probabilities, parent/child, attributes, text patterns, inline formatting usage — across all files |
+| `profiles/bits_profile.json` / `jats_profile.json` (from `core/bits/vocabulary.py`) | tag inventory, labels, attributes (`part_type`, `@name`), groups, image tags |
+| *Load Project DTD* (setting `auto_tag_dtd_dir`) | zone-level content models, allowed children, ordering (Glushkov follow sets), cardinality, required / enumerated attributes. The BITS / JATS output DTDs are applied to the generated XML instead (validation report stage *dtd*) |
+| *Load Reference XML Corpus* | frequencies, succession probabilities, parent/child, attributes, text patterns, inline formatting usage — across all files |
 | Reference projects (existing *Load Reference Project*) | tags used in real zoned projects |
 | User corrections | retagging an auto zone records role → tag preferences (`settings["auto_tag_learning"]`) |
 
@@ -123,12 +121,11 @@ and *Notes, Endnotes, Notes to Chapter N…* - recognised by their own typograph
 on their own line). A section runs until the next heading of the same or higher rank, across pages; a
 smaller sub-heading inside it (e.g. "Chapter 1" inside the Notes) does not end it. Inside a section:
 
-| Block | CUPEPUB tag |
+| Block | Tag (BITS / JATS profile) |
 |---|---|
-| the section heading | `RefHead` / `EnHead` |
-| reference entry starting with a number (`1.`, `[1]`, `(1)`) | `Ref_N` |
-| author-date reference entry | `Ref_D` |
-| note | `Endnotes` |
+| the section heading | `h1` with `part_type` `bibliography` / `notes` (group headings: `title`) |
+| reference entry (numbered `1.`, `[1]`, `(1)` or author-date) | `reference` |
+| note | `en` |
 
 Both note layouts are handled:
 
@@ -136,8 +133,7 @@ Both note layouts are handled:
   chapter heading closes;
 * **all notes at the end of the book, grouped by chapter** - one "Notes" title, then a bold group heading
   per chapter ("Introduction", "1 'Jewels of Women'") with numbering restarting at 1. Group headings
-  inside a notes section become `EnHead` (references: `RefHead`); the XHTML generator turns each
-  `EnHead` + following `Endnotes` run into its own numbered endnote group.
+  inside a notes section become `title` zones.
 
 Reference lists and notes are usually set with a hanging indent - number / first line out, turn-over
 lines in - the opposite of body paragraphs, so the paragraph grouper both merges entries and splits at

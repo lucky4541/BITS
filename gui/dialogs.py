@@ -27,7 +27,7 @@ class SettingsDialog(tk.Toplevel):
     Toplevel OUTSIDE the canvas - always visible regardless of scroll
     position, dialog size, or content height."""
 
-    def __init__(self, parent, settings: dict, epub_profile: dict = None):
+    def __init__(self, parent, settings: dict, epub_profile: dict = None):  # epub_profile: unused, kept for callers
         super().__init__(parent)
         self.title("Settings")
         self.resizable(True, True)
@@ -182,32 +182,22 @@ class SettingsDialog(tk.Toplevel):
 
         ttk.Separator(form, orient="horizontal").grid(row=row, column=0, columnspan=2, sticky="ew", pady=8)
         row += 1
-        tk.Label(form, text="EPUB Profile", font=("Segoe UI", 9, "bold")).grid(row=row, column=0, sticky="w")
+        tk.Label(form, text="BITS / JATS validation", font=("Segoe UI", 9, "bold")).grid(row=row, column=0, sticky="w")
         row += 1
-        tk.Label(form, text="Mapping.xml path override (blank = profile default):").grid(
+        tk.Label(form, text="BITS 2.2 DTD file (blank = profiles/BITS/dtd/):").grid(
             row=row, column=0, columnspan=2, sticky="w")
         row += 1
-        self.mapping_path_var = tk.StringVar(value=settings.get("mapping_xml_path", ""))
-        tk.Entry(form, textvariable=self.mapping_path_var, width=42).grid(row=row, column=0, sticky="w", pady=3)
+        self.bits_dtd_var = tk.StringVar(value=settings.get("bits_dtd_path", ""))
+        tk.Entry(form, textvariable=self.bits_dtd_var, width=42).grid(row=row, column=0, sticky="w", pady=3)
 
-        def _browse_mapping():
+        def _browse_dtd():
             from tkinter import filedialog
-            path = filedialog.askopenfilename(title="Choose Mapping.xml", filetypes=[("XML files", "*.xml")])
+            path = filedialog.askopenfilename(title="Choose the BITS book DTD",
+                                              filetypes=[("DTD files", "*.dtd"), ("All files", "*.*")])
             if path:
-                self.mapping_path_var.set(path)
+                self.bits_dtd_var.set(path)
 
-        tk.Button(form, text="Browse...", command=_browse_mapping).grid(row=row, column=1, sticky="w", pady=3)
-        row += 1
-
-        tk.Label(form, text="Component type (blank = profile default):").grid(row=row, column=0, sticky="w")
-        row += 1
-        component_types = (epub_profile or {}).get("component_types") or []
-        self.component_type_var = tk.StringVar(value=settings.get("epub_component_type", ""))
-        if component_types:
-            ttk.Combobox(form, textvariable=self.component_type_var, values=[""] + component_types,
-                         width=20, state="readonly").grid(row=row, column=0, sticky="w", pady=3)
-        else:
-            tk.Entry(form, textvariable=self.component_type_var, width=22).grid(row=row, column=0, sticky="w", pady=3)
+        tk.Button(form, text="Browse...", command=_browse_dtd).grid(row=row, column=1, sticky="w", pady=3)
         row += 1
 
         ttk.Separator(form, orient="horizontal").grid(row=row, column=0, columnspan=2, sticky="ew", pady=8)
@@ -280,8 +270,7 @@ class SettingsDialog(tk.Toplevel):
                 "high": max(0, min(100, int(self.az_high_var.get() or 90))),
                 "medium": max(0, min(100, int(self.az_medium_var.get() or 75))),
             },
-            "mapping_xml_path": self.mapping_path_var.get().strip(),
-            "epub_component_type": self.component_type_var.get().strip(),
+            "bits_dtd_path": self.bits_dtd_var.get().strip(),
         }
         for key, var in self.index_shortcut_vars.items():
             value = var.get().strip()

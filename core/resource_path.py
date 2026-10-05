@@ -78,7 +78,7 @@ def writable_root() -> str:
     Windows application's per-user data."""
     if is_frozen():
         appdata = os.environ.get("APPDATA") or os.path.expanduser("~")
-        return os.path.join(appdata, "EPUBForge")
+        return os.path.join(appdata, "BITSTool")
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -105,7 +105,7 @@ class ResourceNotFoundError(Exception):
 
 def required_resource_list() -> list:
     """The single canonical list of bundled, READ-ONLY resources every
-    EPUBForge build (onedir or onefile) must ship - each entry is a
+    BITS Tool build (onedir or onefile) must ship - each entry is a
     resource_path()-relative path (a file) or a directory that must
     contain at least one file. Used by main.py's --selfcheck-resources
     flag (runs INSIDE the actual built EXE, the only way to genuinely
@@ -118,25 +118,18 @@ def required_resource_list() -> list:
     against can never silently drift from what resource_path() itself
     resolves."""
     profile_files = [
-        "profiles/xml_profile.json",
-        "profiles/epub_profile.json",
-        "profiles/CUPEPUB/CUPEPUB_Profile.xml",
-        "profiles/CUPEPUB/CUPEPUB_Zoning.xml",
-        "profiles/CUPEPUB/CUPEPUB_Master.xml",
-        "profiles/CUPEPUB/CUPEPUB_AutoStyling.xml",
-        "profiles/CUPEPUB/CUPEPUB_Character.xml",
-        "profiles/CUPEPUB/CUPEPUB_ZoneValidation.xml",
-        "profiles/CUPEPUB/CUPLookup.xml",
-        "profiles/CUPEPUB/Mapping.xml",
+        "profiles/bits_profile.json",
+        "profiles/jats_profile.json",
+        "profiles/BITS/semantic_roles.json",
+        "profiles/JATS/semantic_roles.json",
+        "profiles/JATS/dtd/JATS-journalpublishing1-4-mathml3.dtd",
     ]
     ocr_model_dirs = [
         "ocr_models/PP-LCNet_x1_0_doc_ori", "ocr_models/UVDoc",
         "ocr_models/PP-LCNet_x1_0_textline_ori",
         "ocr_models/PP-OCRv6_medium_det", "ocr_models/PP-OCRv6_medium_rec",
     ]
-    validation_files = ["tools/epubcheck/epubcheck.jar", "runtime/java/bin/java.exe"]
-    validation_dirs = ["tools/epubcheck-testsuite/epub2", "tools/epubcheck-testsuite/epub3"]
-    return profile_files + ocr_model_dirs + validation_files + validation_dirs
+    return profile_files + ocr_model_dirs
 
 
 def selfcheck_missing() -> list:
