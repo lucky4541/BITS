@@ -13,16 +13,24 @@ matching the spec's own framing ("use as SUPPORTING evidence", "signals",
 never a hard classification rule)."""
 import re
 
+from core import lang as _lang
+
 # Surname-first author-start patterns (spec 21): "Smith, John.", "Smith, J.",
 # "Smith J." (no comma), "van der Waals, John.", "de Silva, A.", "O'Connor, J.",
 # "McDonald, A." - a leading lowercase "particle" (van/der/de/von/da/dos) is
 # allowed before the capitalized surname; apostrophes/hyphens are allowed
 # inside the surname itself.
-_SURNAME = r"(?:(?:[a-z]+\s+){0,2})?[A-Z][A-Za-z'’\-]*"
-_AUTHOR_COMMA_RE = re.compile(rf"^{_SURNAME}\s*,\s*[A-Z]")
-_AUTHOR_NOCOMMA_RE = re.compile(rf"^{_SURNAME}\s+[A-Z]\.?\s")
-_MULTI_AUTHOR_RE = re.compile(rf"^{_SURNAME}\s*,\s*[A-Z][\w.'’\-]*\s+(and|&)\s+{_SURNAME}", re.I)
-_ET_AL_RE = re.compile(rf"^{_SURNAME}(\s*,\s*[A-Z][\w.'’\-]*)?\s+et\s+al\.?", re.I)
+# capitals of every cased script (Latin incl. accents, Greek, Cyrillic) -
+# "Müller, J.", "Иванов И. И.", "Παπαδόπουλος, Γ."
+_UP = _lang.UPPER
+_SURNAME = rf"(?:(?:[a-z]+\s+){{0,2}})?{_UP}[^\W\d_'’\-]*(?:['’\-][^\W\d_]+)*"
+_AUTHOR_COMMA_RE = re.compile(rf"^{_SURNAME}\s*,\s*{_UP}")
+_AUTHOR_NOCOMMA_RE = re.compile(rf"^{_SURNAME}\s+{_UP}\.?\s")
+_MULTI_AUTHOR_RE = re.compile(rf"^{_SURNAME}\s*,\s*{_UP}[\w.'’\-]*\s+(?:"
+                              + "|".join(re.escape(j) for j in _lang.NAME_JOINERS) + rf"|&)\s+{_SURNAME}", re.I)
+_ET_AL_RE = re.compile(rf"^{_SURNAME}(\s*,\s*{_UP}[\w.'’\-]*)?\s+(?:"
+                       + "|".join(re.escape(e) for e in _lang.ET_AL if e[:1].isalpha() and e.isascii() or "." in e)
+                       + ")", re.I)
 
 # Organization/corporate authors (spec 22): a capitalized multi-word phrase
 # ending in a recognizable institutional noun, or a well-known all-caps

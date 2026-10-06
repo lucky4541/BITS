@@ -22,6 +22,8 @@ notes - "Chapter 1" - does not end it).
 import re
 from dataclasses import dataclass, field
 
+from core import lang as _lang
+
 REFERENCES, ENDNOTES = "references", "endnotes"
 
 SECTION_WORDS = {
@@ -52,7 +54,8 @@ def section_kind(text: str):
             return kind
     if _NOTES_TO_RE.match(t):
         return ENDNOTES
-    return None
+    kind = _lang.heading_kind(text, ("references", "notes"))      # any language
+    return {"references": REFERENCES, "notes": ENDNOTES}.get(kind)
 
 
 @dataclass
@@ -172,7 +175,8 @@ def adjust_roles(layout, role_map: dict, smap: SectionMap, page: int, candidate_
         out[id(b)] = cands
         if b.kind in ("page_number", "running", "figure", "table"):
             continue
-        if BLANK_PAGE_RE.match(re.sub(r"<[^>]+>", "", b.text or "").strip()):
+        _plain = re.sub(r"<[^>]+>", "", b.text or "").strip()
+        if BLANK_PAGE_RE.match(_plain) or _lang.is_blank_page_notice(_plain):
             out[id(b)] = [candidate_cls("blank_page_notice", 0.97, ["'this page intentionally left blank'"])]
             continue
         hk = smap.heading_kind_at(page, b.bbox)

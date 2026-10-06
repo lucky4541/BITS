@@ -106,8 +106,19 @@ X_TOLERANCE = 20.0
 # "reference" or vice versa.
 _AUTO_CONTINUATION_TAGS = {"p", "reference"}
 
-_SENTENCE_END_RE = re.compile(r'[.!?][\'"’”)\]]*\s*$')
-_STARTS_LOWERCASE_RE = re.compile(r'^\s*[a-z]')
+from core import lang as _lang  # noqa: E402
+
+_SENTENCE_END_RE = re.compile(_lang.SENTENCE_END_CLASS + _lang.CLOSERS_CLASS + r'*\s*$')
+
+
+class _StartsLower:
+    """Unicode-aware: lower-case start in any cased script (é, ж, α ...)."""
+    @staticmethod
+    def match(text):
+        return _lang.starts_lowercase(text)
+
+
+_STARTS_LOWERCASE_RE = _StartsLower()
 _FOOTNOTE_MARKER_START_RE = re.compile(r'^\s*(\d+|[*†‡§¶]+)[.)\s]')
 
 

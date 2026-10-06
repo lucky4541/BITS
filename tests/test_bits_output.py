@@ -254,3 +254,54 @@ def test_font_contrast_is_not_italic_for_another_typeface():
     from core.text_extractor import _font_contrast_may_be_italic as may
     assert not may("OptimaLTStd-Bold", "TimesLTStd-Roman") and not may("OptimaLTStd", "TimesLTStd-Roman")
     assert may("F2", "F1") and may("MinionPro-It", "MinionPro-Regular")
+
+
+# ------------------------------------------------------------- languages
+sys.path.insert(0, os.path.join(ROOT, "tests", "fixtures"))
+import multilang_book  # noqa: E402
+from core import lang  # noqa: E402
+
+LANG_TITLES = {"ru": ("Глава 1", "История сердца"), "de": ("Kapitel 1", "Geschichte des Herzens"),
+               "el": ("Κεφάλαιο 1", "Ιστορία της καρδιάς"), "ar": ("الفصل 1", "تاريخ القلب"),
+               "he": ("פרק 1", "תולדות הלב"),
+               "hi": ("अध्याय 1", "हृदय का इतिहास"), "zh": ("第1章", "心脏的历史"), "ja": ("第1章", "心臓の歴史"),
+               "ko": ("제1장", "심장의 역사")}
+
+
+@pytest.mark.parametrize("code", sorted(multilang_book.BOOKS))
+def test_book_in_any_language(code, tmp_path):
+    if not multilang_book.available(code):
+        pytest.skip("font for this script not installed")
+    pdf = PDFDocument(multilang_book.build(str(tmp_path / f"{code}.pdf"), code))
+    zm = multilang_book.zone(ZoneManager(pdf), pdf, code)
+    out = str(tmp_path / f"{code}.xml")
+    res = pipeline.generate(zm, pdf, "BITS", out, str(tmp_path / "img"), prefix="t", settings={"language": "auto"})
+    assert res.text_preserved, res.summary()
+    root = etree.parse(out).getroot()
+    assert root.get("{http://www.w3.org/XML/1998/namespace}lang") == code       # detected
+    ch = root.find("book-body/book-part")
+    label, title = LANG_TITLES[code]
+    assert ch.findtext("book-part-meta/title-group/label").strip() == label
+    assert "".join(ch.find("book-part-meta/title-group/title").itertext()).strip() == title
+    book = multilang_book.BOOKS[code]
+    # the reference heading (a plain Heading 2) is recognised in its language
+    rl = ch.find("back/ref-list")
+    assert rl is not None and "".join(rl.find("title").itertext()).strip() == book[4]
+    assert [r.findtext("label") for r in rl.findall("ref")] == ["1.", "2."]
+    # the sentence broken by the page break is one paragraph again, joined
+    # without a space in Chinese / Japanese, with one elsewhere
+    sep = "" if code in ("zh", "ja") else " "
+    paras = ["".join(p.itertext()) for p in ch.iter("p")]
+    assert book[2] + sep + book[3] in paras, paras
+
+
+def test_language_rules():
+    assert lang.words("第3章 東京の歴史") == ["第", "3", "章", "東", "京", "の", "歴", "史"]
+    assert lang.joiner("东京是", "日本的首都") == "" and lang.joiner("the", "end") == " "
+    assert lang.continues("предложение продолжается на", "следующей странице")
+    assert lang.continues("und seine", "Arbeit wird", "de") and not lang.continues("und seine", "Arbeit", "en")
+    assert not lang.continues("C'est la fin.", "après")
+    assert lang.heading_kind("Список литературы") == "references" and lang.heading_kind("目次") == "contents"
+    assert lang.match_label("3. fejezet A kezdet", "chapter") == ("3. fejezet", "A kezdet")
+    assert lang.match_label("Part did not happen", "part") is None
+    assert lang.ocr_language("zh") == "ch" and lang.ocr_language("auto", "Привет мир") == "ru"

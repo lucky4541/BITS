@@ -184,6 +184,12 @@ class SettingsDialog(tk.Toplevel):
         row += 1
         tk.Label(form, text="BITS / JATS validation", font=("Segoe UI", 9, "bold")).grid(row=row, column=0, sticky="w")
         row += 1
+        from core.lang import LANGUAGES
+        tk.Label(form, text="Document language (xml:lang):").grid(row=row, column=0, sticky="w")
+        self.doc_lang_var = tk.StringVar(value=settings.get("document_language", "auto"))
+        ttk.Combobox(form, textvariable=self.doc_lang_var, width=12,
+                     values=[f"{k} — {v}" for k, v in LANGUAGES.items()]).grid(row=row, column=1, sticky="w", pady=3)
+        row += 1
         tk.Label(form, text="BITS 2.2 DTD file (blank = profiles/BITS/dtd/):").grid(
             row=row, column=0, columnspan=2, sticky="w")
         row += 1
@@ -271,6 +277,7 @@ class SettingsDialog(tk.Toplevel):
                 "medium": max(0, min(100, int(self.az_medium_var.get() or 75))),
             },
             "bits_dtd_path": self.bits_dtd_var.get().strip(),
+            "document_language": (self.doc_lang_var.get().strip().split() or ["auto"])[0],
         }
         for key, var in self.index_shortcut_vars.items():
             value = var.get().strip()

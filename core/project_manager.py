@@ -19,6 +19,7 @@ DEFAULT_SETTINGS = {
     "debug_logging": False,
     "auto_zone_thresholds": {"high": 90, "medium": 75},   # confidence-bucket cutoffs for Auto Zone
     "profile": "BITS",          # "BITS" | "JATS" - see core/profile_manager.py
+    "document_language": "auto",  # xml:lang - ISO 639-1 code, "auto" = detected from the text (core/lang.py)
     "bits_dtd_path": "",        # "" = the BITS-book*.dtd in profiles/BITS/dtd/ (core/bits/dtd.py)
     # Zone canvas display toggles (gui/pdf_viewer.py._draw_zone) - purely
     # visual, never affect zone data/selection/generation. Defaults ON so

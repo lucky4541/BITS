@@ -23,18 +23,24 @@ corroborates pyspellchecker's own top suggestion; otherwise it is
 REVIEW-only, exactly matching the spec."""
 import re
 
-_WORD_RE = re.compile(r"[A-Za-z]+(?:'[A-Za-z]+)?")
-_SENTENCE_END = ".!?"
+_WORD_RE = re.compile(r"[^\W\d_]+(?:['’][^\W\d_]+)?")      # letters of any script
+_SENTENCE_END = ".!?。！？؟।"
 
-_checker = None
+# pyspellchecker dictionaries
+SPELL_LANGUAGES = {"en", "es", "fr", "de", "pt", "it", "ru", "ar", "nl", "fa", "lv", "eu"}
+_checkers = {}
 
 
-def _get_checker():
-    global _checker
-    if _checker is None:
+def _get_checker(language="en"):
+    """The dictionary for `language`, or None when there is none (the
+    text is then not spell-checked - an English dictionary would flag
+    every word of a Spanish or Chinese book)."""
+    if language not in SPELL_LANGUAGES:
+        return None
+    if language not in _checkers:
         from spellchecker import SpellChecker
-        _checker = SpellChecker()
-    return _checker
+        _checkers[language] = SpellChecker(language=language)
+    return _checkers[language]
 
 
 def _looks_skippable(word: str, is_sentence_start: bool) -> bool:
@@ -49,14 +55,19 @@ def _looks_skippable(word: str, is_sentence_start: bool) -> bool:
     return False
 
 
-def find_spelling_issues(text: str, dictionary_additions=None) -> list:
+def find_spelling_issues(text: str, dictionary_additions=None, language: str = "auto") -> list:
     """Returns raw finding dicts:
         {"word": str, "char_start": int, "char_end": int, "suggestion": str|None, "candidates": set}
     Only for words pyspellchecker's own dictionary doesn't recognize AND
     that survive the proper-noun/acronym/numeric heuristics above."""
     if not text or not text.strip():
         return []
-    checker = _get_checker()
+    if not language or language == "auto":
+        from core.lang import detect_language
+        language = detect_language(text, default="en")
+    checker = _get_checker(language.split("-")[0].lower())
+    if checker is None:
+        return []
     allow = {w.casefold() for w in (dictionary_additions or [])}
 
     findings = []

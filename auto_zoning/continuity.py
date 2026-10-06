@@ -35,13 +35,15 @@ import math
 import re
 from dataclasses import dataclass, field
 
+from core import lang as _lang
+
 MERGE_CONFIDENCE = 0.80
 X_TOLERANCE = 24.0
-_END_PUNCT_RE = re.compile(r"[.!?…][\"'’”)\]]*(\s*\d{1,3})?\s*$")
-_HYPHEN_END_RE = re.compile(r"[A-Za-z]-\s*$")
-_LOWER_START_RE = re.compile(r"^[\s\"'‘“(\[]*[a-z]")
+# every script: . ! ? 。 ！ ？ ؟ । ... ; any letter before a line-end hyphen
+_END_PUNCT_RE = re.compile(_lang.SENTENCE_END_CLASS + _lang.CLOSERS_CLASS + r"*(\s*\d{1,3})?\s*$")
+_HYPHEN_END_RE = re.compile(r"[^\W\d_]-\s*$")
 _ENTRY_NUM_RE = re.compile(r"^\s*(\[\d{1,4}\]|\(\d{1,4}\)|\d{1,4}[.)]?\s|[*†‡§¶]\s)")
-_AUTHOR_START_RE = re.compile(r"^\s*[A-Z][\w'’\-]+(?:\s[A-Z][\w'’\-]+)?,\s+[A-Z]")
+_AUTHOR_START_RE = re.compile(rf"^\s*{_lang.UPPER}[\w'’\-]+(?:\s{_lang.UPPER}[\w'’\-]+)?,\s+{_lang.UPPER}")
 _HEADING_TAG_RE = re.compile(r"^(h\d|.*head(ing)?|title|.*title)$", re.IGNORECASE)
 
 
@@ -97,7 +99,10 @@ def score_pair(prev, nxt, pdf=None, paragraph_indent=0.0, body_size=10.0, footno
     next_lines = _zone_lines(pdf, nxt, cache) if pdf is not None else []
     ends_open = not _END_PUNCT_RE.search(prev_text)
     hyphen = bool(_HYPHEN_END_RE.search(prev_text))
-    lower = bool(_LOWER_START_RE.match(next_text))
+    # lower case start (any cased script); in a script without case, the
+    # previous text breaking off on a letter / comma is the same signal
+    lower = _lang.starts_lowercase(next_text) or (_lang.starts_caseless(next_text)
+                                                  and _lang.continues(prev_text, next_text))
     s = -1.0
     if _is_reference_flow(nxt.tag, footnote_flow_tags):
         # hanging layout: a first line AT the text column (right of where the previous entry's

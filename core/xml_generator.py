@@ -8,6 +8,7 @@ import re
 from lxml import etree
 
 from core import reading_order, hierarchy, text_extractor, debug_log, table_extractor
+from core import lang as _lang
 from core.constants import TEXT_MERGE_TAGS, BACK_MATTER_TAGS, SPLIT_CHILD_TAG
 from core.image_extractor import AssetManager
 
@@ -217,7 +218,8 @@ def _digits(text: str) -> str:
 # extract_figure_label_and_caption / XMLGenerator._extract_figure_label.
 # number: "5-1", "10–7", "1.2.3", "12", "3a" ; an optional qualifier word ("Figura técnica 1.4.1")
 _LABEL_NUMBER = r"\d+[a-z]?(?:[-–.]\d+[a-z]?)*"
-_FIGURE_LABEL_CORE = (r"(?:Figura|Figure|Fig\.|Abbildung|Abb\.|Figuur)(?:\s+[a-záéíóúñç]{3,})?\s+" + _LABEL_NUMBER)
+# "Figure 2-1", "Figura técnica 1.4.1", "Рис. 2.1", "2. ábra", "图1-1", "그림 3" ... (core.lang)
+_FIGURE_LABEL_CORE = _lang.label_core("figure")
 _FIGURE_LABEL_WRAPPED_RE = re.compile(
     rf"^<(bold|italic|b|i)>\s*({_FIGURE_LABEL_CORE})\s*[.:]?\s*</\1>", re.IGNORECASE)
 _FIGURE_LABEL_PLAIN_RE = re.compile(rf"^({_FIGURE_LABEL_CORE})\s*[.:]?\s*", re.IGNORECASE)
@@ -274,7 +276,8 @@ def extract_figure_label_and_caption(text: str):
 # as a match beyond that literal 5-letter sequence, so it can't false-
 # positive on unrelated text.
 _TABLE_KEYWORD_CORE = r"(?:T\s*a\s*b\s*l\s*a|T\s*a\s*b\s*l\s*e)"
-_TABLE_LABEL_CORE = rf"{_TABLE_KEYWORD_CORE}(?:\s+[a-záéíóúñç]{{3,}})?\s+{_LABEL_NUMBER}"
+# "Tabla 1.1.1", "Таблица 3", "表1", "3. táblázat" ... (core.lang), plus letter-spaced "T A B L A 8-1"
+_TABLE_LABEL_CORE = rf"(?:{_lang.label_core('table')}|{_TABLE_KEYWORD_CORE}\s+{_LABEL_NUMBER})"
 _TABLE_LABEL_WRAPPED_RE = re.compile(
     rf"^<(bold|italic|b|i)>\s*({_TABLE_LABEL_CORE})\s*[.:]?\s*</\1>", re.IGNORECASE)
 _TABLE_LABEL_PLAIN_RE = re.compile(rf"^({_TABLE_LABEL_CORE})\s*[.:]?\s*", re.IGNORECASE)
@@ -451,7 +454,9 @@ _BOOK_TAIL_RE = re.compile(
     r"(?P<year2>\d{4})\.?\s*$")
 _DOI_RE = re.compile(r"\bdoi:\s*(\S+)", re.I)
 _URL_RE = re.compile(r"https?://\S+")
-_BIBLIOGRAPHY_TITLE_RE = re.compile(r"^\s*(Bibliograf[íi]a|References?|Bibliography)\.?\s*", re.I)
+_BIBLIOGRAPHY_TITLE_RE = re.compile(
+    r"^\s*(" + "|".join(re.escape(t).replace(r"\ ", r"\s+") for t in _lang.terms("references"))
+    + r")(?![^\W\d_])[.:：]?\s*", re.I)
 
 
 def _split_title_source(middle: str):

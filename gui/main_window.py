@@ -3085,7 +3085,8 @@ class App:
         try:
             res = bits_pipeline.generate(
                 self.zone_manager, self.pdf_document, kind, str(output_path), str(assets_dir), prefix=id_prefix,
-                settings=dict(self.settings.get("bits_meta") or {},
+                settings=dict({"language": self.settings.get("document_language", "auto")},
+                              **(self.settings.get("bits_meta") or {}),
                               bits_dtd_path=self.settings.get("bits_dtd_path", "")),
                 jpeg_quality=self.settings.get("jpeg_quality", 95),
                 image_dpi=self.settings.get("image_dpi", 200),

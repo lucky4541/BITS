@@ -679,7 +679,14 @@ def run_ocr_for_page(pdf_document, page_number: int, engine_name: str = "PaddleO
 
     try:
         _engine_started = _ocr_time.time()
-        result = engine.recognize(image, language=language, options=preprocessing_settings)
+        # ISO code / "auto" / engine model name -> the engine's language model
+        from core.lang import ocr_language
+        try:
+            _sample = pdf_document.get_page(page_number).get_text()[:4000]
+        except Exception:  # noqa: BLE001
+            _sample = ""
+        engine_language = ocr_language(language, _sample) if engine_name.lower().startswith("paddle") else language
+        result = engine.recognize(image, language=engine_language, options=preprocessing_settings)
         _engine_elapsed = _ocr_time.time() - _engine_started
     except OCREngineError as e:
         return OCRResult.empty(page_number=page_number, image_width=image.width, image_height=image.height,

@@ -287,8 +287,10 @@ def verify_zone(page, zone, pdf_path: str, vocabulary: set, dictionary_additions
             source_evidence="OCR-corroborated" if corroborated else "dictionary only",
             auto_fixable=corroborated))
 
-    # --- grammar (always advisory) ---
-    for finding in grammar_verifier.find_grammar_issues(plain_text):
+    # --- grammar (always advisory; the rules are English rules) ---
+    from core.lang import detect_language
+    _english = detect_language(plain_text, default="en") == "en"
+    for finding in (grammar_verifier.find_grammar_issues(plain_text) if _english else []):
         diff = _make_difference(
             issue_type="GRAMMAR", category="content", original_text=finding.get("suggestion") or "",
             converted_text=finding["match_text"], page=zone.page, bbox=zone.bbox, confidence_score=0.5,

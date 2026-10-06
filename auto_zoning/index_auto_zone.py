@@ -73,7 +73,10 @@ _ENDS_WITH_DIGIT_RE = re.compile(r'\d\s*$')
 # real index style, so an ordinary sentence fragment that merely CONTAINS
 # the word "see" (rare in index text, but not impossible) isn't misread as
 # a cross-reference terminator.
-_CROSS_REF_RE = re.compile(r',\s*see(\s+also)?\b', re.IGNORECASE)
+from core import lang as _lang  # noqa: E402
+
+_CROSS_REF_RE = re.compile(r'[,.]\s*(?:' + "|".join(re.escape(t) for t in _lang.SEE_ALSO + _lang.SEE)
+                           + r')(?![^\W\d_])', re.IGNORECASE)
 # A trailing page-number/page-range token - "84", "228-9", "60-1, 190",
 # "100-1, 190" (spec: "DETECT PAGE NUMBERS" / en dash and hyphen both
 # valid range separators, never normalized between the two - spec 7/23).
@@ -648,7 +651,7 @@ def classify_index_page(pdf_document, page_num: int, index_hierarchy_tags: dict 
         return IndexPageClassification("low", "no text detected on this page")
 
     for li in lines[:5]:
-        if _INDEX_TITLE_RE.match(li.text):
+        if _INDEX_TITLE_RE.match(li.text) or _lang.is_heading(li.text, "index"):
             return IndexPageClassification("high", "page heading reads 'Index'")
 
     page_width, _page_height = pdf_document.page_size(page_num)

@@ -28,6 +28,8 @@ from copy import deepcopy
 
 from lxml import etree
 
+from core import lang as _lang
+
 from core.xml_generator import PART_TYPE_ATTR
 
 XLINK_NS = "http://www.w3.org/1999/xlink"
@@ -46,10 +48,10 @@ LIST_TYPES = {"number": "order", "numbered": "order", "decimal": "order", "upper
               "lower-alpha": "alpha-lower", "upper-roman": "roman-upper", "lower-roman": "roman-lower"}
 _NUM_LABEL_RE = re.compile(r"^\s*(\[?\d+[a-z]?\]?|[*†‡§]+)[.)]?\s+")
 # "Chapter 1", "Capítulo 1.2", "Chapitre IV", "Kapitel 3", "Parte II", "Sección I" ... or a bare number
-_LABEL_WORDS = (r"chapter|part|appendix|section|cap[ií]tulo|parte|secci[oó]n|ap[eé]ndice|anexo|chapitre|partie|"
-                r"annexe|kapitel|teil|anhang|capitolo|appendice|cap[ií]tulo")
-_CHAPTER_LABEL_RE = re.compile(r"^\s*((?:" + _LABEL_WORDS + r")\s+[\dIVXLCivxlc]+(?:\.\d+)*|[\dIVXL]+(?:\.\d+)*)"
-                               r"[.:]?\s+(?=\S)", re.I)
+# "Chapter 3", "Capítulo 1.2", "Глава 3", "3. fejezet", "第3章", "제3장", "Appendix A" ... in any
+# language (core.lang), or a bare leading number "1 Beginnings" / "IV The End"
+_CHAPTER_LABEL_RE = re.compile(r"^\s*(?:(" + _lang.label_core("chapter", "part", "section", "appendix")
+                               + r")[.:：]?\s*|((?-i:[\dIVXL]+)(?:\.\d+)*)[.:]?\s+)(?=\S)", re.I)
 _ISBN_RE = re.compile(r"((?:97[89][\s\-]?)?\d[\d\s\-]{7,15}[\dXx])")
 
 
@@ -60,10 +62,7 @@ def text_of(el):
 
 def content_signature(root):
     """The document's words (in document order)."""
-    words = []
-    for t in root.itertext():
-        words.extend(t.split())
-    return words
+    return _lang.words(" ".join(root.itertext()))
 
 
 def lost_words(before, after):
@@ -412,10 +411,14 @@ def _detach(el):
 # ================================================================ metadata
 def parse_names(text):
     """"James I. Wimsatt and Jane Roe" -> [("Wimsatt", "James I."), ("Roe", "Jane")]."""
-    text = re.sub(r"^\s*(?:by|edited by|por|par|von|di)\s+", "", text or "", flags=re.I)
-    # "and" / Spanish "y" / French "et" / German "und" join names
-    parts = [p.strip(" ,") for p in re.split(r"\s*(?:,\s*(?:and|y|et|und)\s+|\b(?:and|y|et|und)\b|&|;)\s*", text)
-             if p.strip(" ,")]
+    text = _lang.strip_byline(text)
+    if _lang.dominant_script(text) in ("Han", "Hangul", "Hiragana", "Katakana"):
+        # 张三、李四 / 김철수, 이영희: family name first, names separated by 、，, or spaces
+        names = [n for n in re.split("[" + re.escape(_lang.CJK_NAME_SEPARATORS) + r"\s]+", text) if n]
+        return [(n[:1], n[1:]) if len(n) in (2, 3) and _lang.dominant_script(n) != "Hiragana" else (n, "")
+                for n in names]
+    # joiners in any language: and / y / et / und / и / και / و ...
+    parts = [p.strip(" ,") for p in _lang.name_split_regex().split(text) if p.strip(" ,")]
     # "Gunes Orman, Amy Mehollin-Ray, Thierry A. Huisman": a list of full
     # names (every comma piece has 2+ words), not "Surname, Given"
     split = []
@@ -470,6 +473,8 @@ def _contrib_group(contribs, ids):
         for sur, given in names:
             con = _el("contrib", contrib_type=ctype)
             name = _el("name")
+            if _lang.dominant_script(sur + given) in ("Han", "Hangul", "Hiragana", "Katakana"):
+                name.set("name-style", "eastern")
             name.append(_el("surname", sur))
             if given:
                 name.append(_el("given-names", given))
@@ -684,7 +689,7 @@ def build_bits_book(gen_root, settings=None, prefix="b"):
             loose_front[-1].extend(lead_targets)
     book = etree.Element("book", nsmap={"xlink": XLINK_NS, "mml": MML_NS})
     book.set("dtd-version", "2.2")
-    book.set(XML_LANG, settings.get("language", "en"))
+    book.set(XML_LANG, settings.get("language") or "en")
     if settings.get("book_type"):
         book.set("book-type", settings["book_type"])
     cm = _collection_meta(meta)
@@ -827,6 +832,8 @@ def _title_group(part):
         title = sec_title
     if label is None and title is not None and title.text:
         m = _CHAPTER_LABEL_RE.match(title.text)
+        if m and not (m.group(1) or m.group(2)):
+            m = None
         if m and part.kind in ("chapter", "part", "appendix") and len(title.text) > m.end():
             label = _el("label", title.text[:m.end()].strip())     # keep "I." / "1:" punctuation
             title.text = title.text[m.end():]
@@ -842,11 +849,6 @@ def _title_group(part):
     return tg
 
 
-_REF_HEADING_RE = re.compile(
-    r"^\s*(references?|key references|bibliography|further reading|suggested reading|works cited|"
-    r"referencias?( clave| bibliogr[aá]ficas)?|bibliograf[ií]a|lecturas( recomendadas)?|"
-    r"r[eé]f[eé]rences( bibliographiques)?|literatur(verzeichnis)?|riferimenti( bibliografici)?|bibliografia)\s*$",
-    re.I)
 
 
 def _is_empty_ref_heading(sec):
@@ -856,7 +858,7 @@ def _is_empty_ref_heading(sec):
     if any(c.tag != "target" for c in rest) or text_of(sec).strip() == "":
         return False
     title = text_of(sec.find("title")) if sec.find("title") is not None else ""
-    return sec.get("sec-type") == "references" or bool(_REF_HEADING_RE.match(title))
+    return sec.get("sec-type") == "references" or _lang.is_heading(title, "references")
 
 
 def _ref_labels(rl):
@@ -1131,7 +1133,7 @@ def build_jats_article(gen_root, settings=None, prefix="a"):
     art = etree.Element("article", nsmap={"xlink": XLINK_NS, "mml": MML_NS})
     art.set("article-type", settings.get("article_type", "research-article"))
     art.set("dtd-version", "1.4")
-    art.set(XML_LANG, settings.get("language", "en"))
+    art.set(XML_LANG, settings.get("language") or "en")
     front = etree.SubElement(art, "front")
     jm = _journal_meta(settings)
     if meta["publisher-name"] and jm.find("publisher") is None:
@@ -1280,6 +1282,10 @@ def _article_meta(meta, settings, ids):
 
 def build(kind, gen_root, settings=None, prefix=None):
     del DECLARED[:]
+    # xml:lang: the setting, or detected from the whole text (before the
+    # builders move the content out of gen_root)
+    settings = dict(settings or {})
+    settings["language"] = _lang.resolve_language(settings.get("language"), " ".join(gen_root.itertext()))
     if kind.upper() in ("BITS", "BITS-BOOK", "BOOK"):
         root = build_bits_book(gen_root, settings, prefix or "b")
     else:
@@ -1311,15 +1317,16 @@ def _join_continuations(root):
     that paragraph (or list item paragraph); a word hyphenated across the
     break is rejoined. Nothing is reordered within the text itself."""
     last = None
+    doc_lang = root.get(XML_LANG)
     for p in list(root.iter("p")):
         if any(a.tag in _NOT_FLOW for a in p.iterancestors()):
             continue
         start = _plain_start(p)
-        if (last is not None and p.getparent() is not None and p.getparent().tag in _FLOW_PARENTS
-                and start[:1].isalpha() and start[:1].islower()):
+        if last is not None and p.getparent() is not None and p.getparent().tag in _FLOW_PARENTS:
             prev_text = "".join(last.itertext()).rstrip()
-            if prev_text and prev_text[-1] not in ".!?:;)»”\"":
-                _append_paragraph(last, p, hyphen=bool(re.search(r"\w-$", prev_text)))
+            if prev_text and prev_text[-1] not in ":;" and _lang.continues(prev_text, start, doc_lang):
+                _append_paragraph(last, p, hyphen=bool(re.search(r"[^\W\d_]-$", prev_text))
+                                  and _lang.starts_lowercase(start))
                 continue
         last = p
 
@@ -1340,7 +1347,7 @@ def _append_paragraph(dst, src, hyphen):
         sep = ""
     else:
         end = end.rstrip()
-        sep = " "
+        sep = _lang.joiner(end, _plain_start(src))
     if tail_holder is None:
         dst.text = end
     else:

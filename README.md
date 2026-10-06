@@ -85,6 +85,39 @@ setting `bits_meta` (journal id / title / ISSN / publisher) or placeholders.
 
 The DOCTYPE written to the output uses the DTD's own public identifier.
 
+## Languages
+
+The tool works for books in any language and script (`core/lang.py`):
+
+* **Labels and headings** in ~40 languages: "Chapter 3", "Capítulo 1.2",
+  "Глава 3", "Κεφάλαιο 5", "الفصل 1", "פרק 1", "अध्याय 1", "บทที่ 3",
+  number-first "3. fejezet" / "2. ábra", and Chinese / Japanese / Korean
+  "第3章", "第三章", "图1-1", "図2", "그림 3", "제3장"; figure / table labels
+  ("Рис. 2.1", "Abbildung 4", "表1", "جدول 2"); reference, notes, index,
+  contents, preface, introduction, acknowledgments, glossary headings
+  ("Список литературы", "参考文献", "참고문헌", "المراجع", "Literaturverzeichnis" ...).
+* **Scripts**: Chinese / Japanese / Thai lines are joined without a space;
+  right-to-left lines (Arabic, Hebrew, Persian, Urdu) are put in reading
+  order from the glyph positions (numbers and Latin words inside stay left to
+  right); Arabic / Hebrew presentation forms and ligature glyphs become the
+  ordinary letters; Indic vowel signs, Arabic-Indic / Devanagari / full-width
+  digits are handled.
+* **Text checks** compare Chinese / Japanese text character by character;
+  paragraphs broken by a column / page break are rejoined in any script
+  (lower-case start, or - in scripts without case - a sentence that has not
+  ended; German nouns are allowed to start with a capital).
+* **Author names**: "and / y / et / und / и / και / و ..." and comma lists;
+  Chinese / Korean names as family + given name (`name-style="eastern"`).
+* **xml:lang** is detected from the text (Settings › Document language,
+  default "Detect automatically"), the **OCR language** maps to the OCR
+  model (OCR settings › Language), the **spell check** uses the dictionary of
+  the book's language (en, es, fr, de, pt, it, ru, ar, nl, fa, lv, eu) and the
+  grammar hints run only for English.
+
+`tests/fixtures/multilang_book.py` builds test books in Russian, German, Greek,
+Arabic, Hebrew, Hindi, Chinese, Japanese and Korean; the tests convert each one
+and check label, title, reference list, joined paragraph and xml:lang.
+
 ## Validation and auto-fix
 
 Every *Generate XML* run validates the result against the DTD and applies

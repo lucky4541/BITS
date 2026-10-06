@@ -181,9 +181,13 @@ class OCRSettingsDialog(tk.Toplevel):
         self._test_btn.pack(side="left", padx=(10, 0))
         row += 1
 
-        tk.Label(form, text="Language code:", anchor="w").grid(row=row, column=0, sticky="w", pady=4)
-        self._lang_var = tk.StringVar(value=current_settings.get("language", "en"))
-        tk.Entry(form, textvariable=self._lang_var, width=10).grid(row=row, column=1, sticky="w", pady=4)
+        tk.Label(form, text="Language:", anchor="w").grid(row=row, column=0, sticky="w", pady=4)
+        from core.lang import LANGUAGES
+        self._lang_var = tk.StringVar(value=current_settings.get("language", "auto"))
+        # ISO code ("auto" = from the page's own text / script); any OCR
+        # engine model name ("ch", "latin", "cyrillic" ...) can be typed too
+        ttk.Combobox(form, textvariable=self._lang_var, width=10,
+                     values=[f"{k} — {v}" for k, v in LANGUAGES.items()]).grid(row=row, column=1, sticky="w", pady=4)
         row += 1
 
         tk.Label(form, text="Render DPI (quality):", anchor="w").grid(row=row, column=0, sticky="w", pady=4)
@@ -271,7 +275,7 @@ class OCRSettingsDialog(tk.Toplevel):
         self.result = {
             "engine": self._engine_var.get(),
             "mode": self._mode_var.get(),
-            "language": self._lang_var.get().strip() or "en",
+            "language": (self._lang_var.get().strip().split()[0] if self._lang_var.get().strip() else "auto"),
             "dpi": int(self._dpi_var.get()),
             "preprocessing": {k: v.get() for k, v in self._prep_vars.items()},
         }

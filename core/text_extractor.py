@@ -3048,6 +3048,9 @@ def _get_rawdict(page):
         _rawdict_cache.move_to_end(key)
         return cached
     raw = page.get_text("rawdict")
+    # right-to-left lines (Arabic, Hebrew, Persian ...) in reading order
+    from core.lang import fix_rtl_rawdict
+    raw = fix_rtl_rawdict(raw)
     _rawdict_cache[key] = raw
     if len(_rawdict_cache) > _RAWDICT_CACHE_MAXSIZE:
         _rawdict_cache.popitem(last=False)
@@ -3081,6 +3084,9 @@ def _normalize_text_for_epub(text: str) -> str:
     word's spelling.
     """
     text = unicodedata.normalize("NFC", text)
+    # Arabic / Hebrew presentation forms and ligature glyphs -> ordinary letters
+    from core.lang import normalize_presentation_forms
+    text = normalize_presentation_forms(text)
 
     # A dash-like defect ('±' standing in for an em/en dash) that spans
     # two PDF text-showing operations (e.g. "18 ± 19" split across
@@ -4322,6 +4328,12 @@ def _is_linebreak_hyphen_boundary(prev_text: str, next_text: str) -> bool:
     return last in _HYPHEN_CHARS and first.isalpha() and first.islower()
 
 
+def _lang_joiner(prev, nxt):
+    """" " between joined lines - "" for scripts written without spaces."""
+    from core.lang import joiner
+    return joiner(re.sub(r"<[^>]+>", "", prev[-40:]), re.sub(r"<[^>]+>", "", nxt[:40]))
+
+
 _NON_ITALIC_STYLE_RE = re.compile(r"(roman|regular|book|medium|bold|demi|semi|light|black|heavy|condensed)", re.I)
 
 
@@ -4375,7 +4387,7 @@ def dehyphenate_join(parts, keep_at=None) -> str:
             else:
                 result = _strip_trailing_hyphen(result) + nxt
         else:
-            result = result.rstrip(" \t") + " " + nxt.lstrip(" \t")
+            result = result.rstrip(" \t") + _lang_joiner(result, nxt) + nxt.lstrip(" \t")
     # a soft hyphen left inside a line is an invisible break opportunity, not text
     return _merge_adjacent_inline_tags(result.replace("\u00ad", ""))
 

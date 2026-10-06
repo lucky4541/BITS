@@ -11,7 +11,10 @@ from core.fidelity_compare import block_aligner
 
 
 def tokenize(text: str) -> list:
-    return text.split()
+    # whitespace words; every character of Chinese / Japanese / Thai (written
+    # without spaces) is its own token (core.lang.words)
+    from core.lang import words
+    return words(text)
 
 
 def align_tokens(original_text: str, converted_text: str) -> list:
