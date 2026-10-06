@@ -27,6 +27,7 @@ class BitsResult:
     asset_counters: dict = field(default_factory=dict)
     dtd_path: str = ""
     dtd_available: bool = False
+    dtd_problem: str = ""
     errors_before: list = field(default_factory=list)
     errors_after: list = field(default_factory=list)
     fixes: list = field(default_factory=list)
@@ -45,7 +46,8 @@ class BitsResult:
         if not self.text_preserved:
             return "FAIL - text changed"
         if not self.dtd_available:
-            return "NOT VALIDATED - DTD not installed"
+            return ("NOT VALIDATED - DTD incomplete" if "incomplete" in self.dtd_problem
+                    else "NOT VALIDATED - DTD not installed")
         return "VALID" if self.valid else "NEEDS REVIEW"
 
     def summary(self):
@@ -54,6 +56,8 @@ class BitsResult:
             lines.append(f"DTD: {os.path.basename(self.dtd_path)}")
             lines.append(f"DTD errors: {len(self.errors_before)} before auto-fix, {len(self.errors_after)} after "
                          f"({len(self.fixes)} automatic fix(es))")
+        elif self.dtd_problem:
+            lines.append(self.dtd_problem)
         lines.append(f"Words: {self.words_generated} generated, {self.words_output} in the output"
                      + ("" if self.text_preserved else "  <-- DIFFERENT"))
         lines += self.notes
@@ -86,7 +90,8 @@ def generate(zone_manager, pdf_document, kind: str, output_path: str, assets_dir
         res.text_preserved = False
         res.notes.append(f"TEXT LOST in the structure step: {' '.join(lost[:30])}")
     # 3. DTD repairs + validation
-    res.dtd_available = dtd.available(kind, settings)
+    res.dtd_problem = dtd.problem(kind, settings)
+    res.dtd_available = not res.dtd_problem
     if res.dtd_available:
         model = dtd.load(kind, settings)
         res.dtd_path = model.source
@@ -94,7 +99,7 @@ def generate(zone_manager, pdf_document, kind: str, output_path: str, assets_dir
         res.errors_before, res.errors_after = rep.errors_before, rep.errors_after
         res.fixes, res.removed_attributes = rep.fixes, rep.removed_attributes
         res.notes += rep.reverted
-    else:
+    elif "incomplete" not in res.dtd_problem:
         res.notes.append(f"The {kind} DTD is not installed - the XML was not validated. "
                          + ("Put the BITS 2.2 DTD files in profiles/BITS/dtd/." if kind == "BITS" else ""))
     words2 = structure.content_signature(root)

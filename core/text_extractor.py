@@ -2529,6 +2529,13 @@ _GLYPH_UNICODE_MAP = {
     175: "fl",
 }
 
+# Glyph ids are positions in ONE font's glyph table - they mean nothing in
+# another font (e.g. in TimesLTStd glyph 241 is a correct "ñ" and 193 a
+# correct "Á"; mapping them to "æ" / a combining grave corrupted Spanish
+# text). The map above was observed in a malformed ArialMT font, so it is
+# applied only to fonts of that family.
+_ZERO_WIDTH_CHARS = {"\u200b", "\u200c", "\u200d", "\u2060", "\ufeff"}
+_GLYPH_UNICODE_MAP_FONTS = ("arial",)
 _GLYPH_TRACE_CACHE_MAXSIZE = 8
 _glyph_trace_cache = OrderedDict()
 
@@ -2972,6 +2979,8 @@ def _glyph_repair_for_char(page, ch, font_name=""):
     glyph shape.  If the visual evidence is unavailable, no repair is made.
     """
     if page is None:
+        return None
+    if not any(f in (font_name or "").lower() for f in _GLYPH_UNICODE_MAP_FONTS):
         return None
 
     gid = _trace_glyph_id(page, ch)
@@ -4011,7 +4020,7 @@ def extract_lines(page, bbox):
                 # (CUPEPUB precise-formatting mode: a BOLD minority face is
                 # the bold variant, never evidence of italic.)
                 if (not span_italic and _zone_dominant_font and rec["font"] != _zone_dominant_font
-                        and not (_DECORATION_DETECTION_ENABLED and span_bold)):
+                        and not span_bold and _font_contrast_may_be_italic(rec["font"], _zone_dominant_font)):
                     _st = "".join(ch.get("c", "") for ch in rec["matched"])
                     if any(ch.isalpha() for ch in _st):
                         span_italic = True
@@ -4022,6 +4031,8 @@ def extract_lines(page, bbox):
                 )
 
                 for char_index, (ch, c) in enumerate(zip(matched, fixed_chars)):
+                    if c in _ZERO_WIDTH_CHARS:
+                        continue        # invisible; would otherwise read as a gap -> a false space
                     cb = ch["bbox"]
                     line_bbox = cb if line_bbox is None else (
                         min(line_bbox[0], cb[0]),
@@ -4047,11 +4058,15 @@ def extract_lines(page, bbox):
                         and c.isalpha()
                         and zero_gap
                     )
+                    # (c) only where the PDF itself starts a new text run at
+                    # the capital: a word set in one run - "StatPearls",
+                    # "EPdA", "bSSFP", "PubMed", "iPhone" - is one word.
                     case_boundary = (
                         prev_char is not None
                         and prev_char.islower()
                         and c.isupper()
                         and zero_gap
+                        and char_index == 0
                         and pending_word.lower() not in _NAME_PREFIX_EXCEPTIONS
                     )
 
@@ -4182,7 +4197,11 @@ def extract_lines(page, bbox):
             if runs:
                 original_text = "".join(value for _, value in runs)
                 text = "".join(_wrap_run(style, value) for style, value in runs)
-                if text:
+                # A whitespace-only "line" (e.g. the tab after a list bullet,
+                # which InDesign PDFs place as its own line between the
+                # item's first and second lines) carries no text and would
+                # sit between a line-end hyphen and its continuation.
+                if text and original_text.strip():
                     text = _merge_adjacent_inline_tags(text)
                     final_line = _normalize_text_for_epub(text)
                     lines_out.append((line_bbox, final_line))
@@ -4303,6 +4322,29 @@ def _is_linebreak_hyphen_boundary(prev_text: str, next_text: str) -> bool:
     return last in _HYPHEN_CHARS and first.isalpha() and first.islower()
 
 
+_NON_ITALIC_STYLE_RE = re.compile(r"(roman|regular|book|medium|bold|demi|semi|light|black|heavy|condensed)", re.I)
+
+
+def _font_family(name: str) -> str:
+    name = (name or "").split("+", 1)[-1]          # subset prefix "ABCDEF+"
+    return re.split(r"[-,]", name, 1)[0].lower()
+
+
+def _font_contrast_may_be_italic(minority: str, dominant: str) -> bool:
+    """A minority font in a zone is only taken as the italic face when the
+    names do not say otherwise: a named non-italic style ("-Roman", "-Bold",
+    "Regular" ...) or a different named typeface (Optima beside Times) is a
+    font change, not italic. Opaque names ("F1"/"F2", "T3") keep the
+    original font-contrast rule."""
+    if _NON_ITALIC_STYLE_RE.search((minority or "").split("+", 1)[-1].split("-", 1)[-1]) and "-" in minority:
+        return False
+    fam_min, fam_dom = _font_family(minority), _font_family(dominant)
+    named = all(len(f) > 3 and f.isalpha() for f in (fam_min, fam_dom))
+    if named and fam_min != fam_dom:
+        return False
+    return True
+
+
 def dehyphenate_join(parts, keep_at=None) -> str:
     """Joins a sequence of text fragments (already-extracted line or zone
     text), collapsing an artificial PDF line/page-break hyphen - a fragment
@@ -4333,8 +4375,9 @@ def dehyphenate_join(parts, keep_at=None) -> str:
             else:
                 result = _strip_trailing_hyphen(result) + nxt
         else:
-            result = result + " " + nxt
-    return _merge_adjacent_inline_tags(result)
+            result = result.rstrip(" \t") + " " + nxt.lstrip(" \t")
+    # a soft hyphen left inside a line is an invisible break opportunity, not text
+    return _merge_adjacent_inline_tags(result.replace("\u00ad", ""))
 
 
 

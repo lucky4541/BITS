@@ -97,9 +97,26 @@ def test_bits_book_is_valid(pdf, tmp_path):
 
 
 def test_bits_without_dtd_says_so(pdf, tmp_path, monkeypatch):
-    monkeypatch.setattr(dtd, "available", lambda kind, settings=None: False)
+    monkeypatch.setattr(dtd, "problem", lambda kind, settings=None: "BITS 2.2 DTD not installed")
     res, _root, _out = _generate(pdf, "BITS", tmp_path)
     assert res.status == "NOT VALIDATED - DTD not installed" and res.text_preserved
+
+
+def test_incomplete_dtd_names_missing_modules(tmp_path):
+    top = tmp_path / "BITS-book2-2.dtd"
+    top.write_text('<!ENTITY % m PUBLIC "-//X//EN" "BITS-bookcustom-modules2-2.ent">\n%m;\n')
+    settings = {"bits_dtd_path": str(top)}
+    assert not dtd.available("BITS", settings)
+    msg = dtd.problem("BITS", settings)
+    assert "incomplete" in msg and "BITS-bookcustom-modules2-2.ent" in msg
+
+
+def test_multilingual_labels_and_names():
+    assert structure.parse_names("Radu Apostol y Farr Nezhat") == [("Apostol", "Radu"), ("Nezhat", "Farr")]
+    assert structure.parse_names("Gunes Orman, Amy Mehollin-Ray, Thierry A. Huisman") == [
+        ("Orman", "Gunes"), ("Mehollin-Ray", "Amy"), ("Huisman", "Thierry A.")]
+    assert structure.parse_names("Wimsatt, James I.") == [("Wimsatt", "James I.")]
+    assert structure._CHAPTER_LABEL_RE.match("Capítulo 1.2 Instrumentos").group(1) == "Capítulo 1.2"
 
 
 # --------------------------------------------------------------- autofix
@@ -194,3 +211,46 @@ def test_profile_names():
     from core import profile_manager
     assert profile_manager.list_profile_names() == ["BITS", "JATS"]
     assert profile_manager.DEFAULT_PROFILE_NAME == "BITS"
+
+
+# ------------------------------------------------- real-book fixes (Belfort SEC01)
+def test_labels_in_dotted_and_styled_captions():
+    from core import xml_generator as xg
+    assert xg.extract_figure_label_and_caption("<bold>Figura 1.1.1. </bold> Partes") == ("Figura 1.1.1", "Partes")
+    assert xg.extract_figure_label_and_caption("<bold>Figura técnica 1.4.1. A.</bold> La") == \
+        ("Figura técnica 1.4.1", "<bold>A.</bold> La")
+    assert xg.extract_table_label_and_caption("<b>Tabla 1.1.1   Propiedades</b>") == ("Tabla 1.1.1", "<b>Propiedades</b>")
+    assert xg.extract_table_label_and_caption("<b>Tabla 1.1.1</b>")[0] == "Tabla 1.1.1"
+    assert xg.extract_figure_label_and_caption("FIGURA 5-1 Escala") == ("FIGURA 5-1", "Escala")
+
+
+def test_citation_with_doi_keeps_all_text():
+    from core import xml_generator as xg
+    raw = "3. Nitsche J, Brost B. A cervical cerclage task trainer. J Perinat Med. 2016;44(8):1-3. doi:10.1515/jpm-2015-0196"
+    mc = etree.Element("mixed-citation")
+    xg.XMLGenerator.__new__(xg.XMLGenerator)._append_citation_children(mc, xg._parse_citation(raw))
+    assert "".join(mc.itertext()) == raw
+    assert mc.find("pub-id").text == "10.1515/jpm-2015-0196"
+
+
+def test_continuation_paragraphs_are_joined():
+    r = etree.fromstring('<body><sec><title>T</title><p>Los tamaños desde el ta-</p><table-wrap><table/></table-wrap>'
+                         '<p><target id="page2"/>maño USP 2-0.</p><p>Nueva frase.</p></sec></body>')
+    del structure.DECLARED[:]
+    structure._join_continuations(r)
+    ps = r.findall(".//p")
+    assert len(ps) == 2 and "".join(ps[0].itertext()) == "Los tamaños desde el tamaño USP 2-0."
+    assert ps[0].find("target") is not None
+
+
+def test_blocks_after_a_section_go_into_it():
+    blocks = [etree.fromstring("<p>a</p>"), etree.fromstring("<sec><title>S</title><sec><title>S2</title></sec></sec>"),
+              etree.fromstring("<fig/>")]
+    out = structure._sections_last(blocks)
+    assert [b.tag for b in out] == ["p", "sec"] and out[1][1][-1].tag == "fig"
+
+
+def test_font_contrast_is_not_italic_for_another_typeface():
+    from core.text_extractor import _font_contrast_may_be_italic as may
+    assert not may("OptimaLTStd-Bold", "TimesLTStd-Roman") and not may("OptimaLTStd", "TimesLTStd-Roman")
+    assert may("F2", "F1") and may("MinionPro-It", "MinionPro-Regular")

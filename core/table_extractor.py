@@ -114,7 +114,35 @@ def _get_words_in_bbox(page, bbox):
     text_extractor.extract_formatted_text once a cell's bbox is known, so
     formatting/hyphenation/sup-sub detection is reused, never duplicated."""
     words = page.get_text("words", clip=fitz.Rect(*bbox))
-    return [{"bbox": (w[0], w[1], w[2], w[3]), "text": w[4]} for w in words]
+    out = [{"bbox": (w[0], w[1], w[2], w[3]), "text": w[4]} for w in words]
+    return _attach_bullets(out)
+
+
+_BULLET_ONLY = set("•●▪◦■□◆♦‣⁃–-")
+
+
+def _attach_bullets(words):
+    """A list bullet set apart by a tab ("•<tab>text") is a separate word
+    with a wide gap after it - for column detection it would become a
+    column of bullets beside a column of text. Geometrically it belongs to
+    the word it introduces, so the two are measured as one."""
+    out = []
+    i = 0
+    while i < len(words):
+        w = words[i]
+        if w["text"] and all(c in _BULLET_ONLY for c in w["text"]):
+            x0, y0, x1, y1 = w["bbox"]
+            nxt = min((v for v in words if v is not w and abs(v["bbox"][1] - y0) < 2.5
+                       and 0 <= v["bbox"][0] - x1 < 25), key=lambda v: v["bbox"][0], default=None)
+            if nxt is not None:
+                nb = nxt["bbox"]
+                nxt["bbox"] = (min(x0, nb[0]), min(y0, nb[1]), max(x1, nb[2]), max(y1, nb[3]))
+                nxt["text"] = w["text"] + " " + nxt["text"]
+                i += 1
+                continue
+        out.append(w)
+        i += 1
+    return out
 
 
 # ---------- rotated table support ----------

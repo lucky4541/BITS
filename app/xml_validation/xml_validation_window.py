@@ -46,10 +46,9 @@ def open_window(launcher_root, on_home):
     tk.Button(row2, text="Browse...", command=browse_dtd).pack(side=tk.LEFT)
     status = tk.Label(win, text="Choose a BITS (book) or JATS (article) XML file.", anchor="w", padx=8)
     status.pack(fill=tk.X)
-    info = tk.Label(win, text=("BITS DTD: " + ("installed" if dtd.available("BITS") else
-                                               "NOT installed - put the BITS 2.2 DTD files in profiles/BITS/dtd/")
-                               + "    JATS DTD: " + ("installed" if dtd.available("JATS") else "not installed")),
-                    anchor="w", padx=8, fg="#555")
+    info = tk.Label(win, text=("BITS DTD: " + ("installed" if dtd.available("BITS") else dtd.problem("BITS"))
+                               + "\nJATS DTD: " + ("installed" if dtd.available("JATS") else dtd.problem("JATS"))),
+                    anchor="w", justify="left", padx=8, fg="#555", wraplength=1050)
     info.pack(fill=tk.X)
 
     cols = ("#", "Message")

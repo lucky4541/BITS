@@ -27,6 +27,20 @@ class DTDNotFound(Exception):
     pass
 
 
+class DTDIncomplete(DTDNotFound):
+    """The DTD file was found but its module files (.ent / .dtd it loads) are
+    not next to it - e.g. only BITS-book*.dtd was copied, not the whole
+    unzipped DTD package."""
+
+
+def missing_modules(path: str) -> list:
+    """Module files the DTD file names that are not in its folder."""
+    folder = os.path.dirname(path)
+    with open(path, encoding="utf-8", errors="replace") as f:
+        names = re.findall(r'"([^"\s]+\.(?:ent|dtd|mod))"', f.read())
+    return sorted({n for n in names if not os.path.isfile(os.path.join(folder, n))})
+
+
 def dtd_path(kind: str, settings: dict = None) -> str:
     settings = settings or {}
     kind = kind.upper()
@@ -59,7 +73,24 @@ def _version(path):
 def load(kind: str, settings: dict = None) -> DTDModel:
     path = dtd_path(kind, settings)
     if path not in _cache:
-        _cache[path] = DTDModel(etree.DTD(path), source=path)   # by path: relative modules resolve
+        missing = missing_modules(path)
+        if missing:              # lxml silently skips a module it can't find
+            raise DTDIncomplete(
+                f"{kind.upper()} DTD is incomplete: {os.path.basename(path)} was found but "
+                f"{len(missing)} of its module files are missing ({', '.join(missing[:6])}"
+                f"{', ...' if len(missing) > 6 else ''}). Unzip the WHOLE DTD package into "
+                f"{os.path.dirname(path)}")
+        try:
+            _cache[path] = DTDModel(etree.DTD(path), source=path)   # by path: relative modules resolve
+        except (etree.DTDParseError, OSError) as e:
+            missing = missing_modules(path)
+            if missing:
+                raise DTDIncomplete(
+                    f"{kind.upper()} DTD is incomplete: {os.path.basename(path)} was found but "
+                    f"{len(missing)} of its module files are missing ({', '.join(missing[:6])}"
+                    f"{', ...' if len(missing) > 6 else ''}). Unzip the WHOLE DTD package into "
+                    f"{os.path.dirname(path)}") from e
+            raise DTDIncomplete(f"{kind.upper()} DTD could not be loaded ({path}): {e}") from e
     return _cache[path]
 
 
@@ -81,8 +112,18 @@ def doctype(kind: str, settings: dict = None) -> str:
 
 
 def available(kind: str, settings: dict = None) -> bool:
+    """True when the DTD is found AND loads (all its modules present)."""
     try:
-        dtd_path(kind, settings)
+        load(kind, settings)
         return True
     except DTDNotFound:
         return False
+
+
+def problem(kind: str, settings: dict = None) -> str:
+    """Why the DTD can't be used ("" when it can)."""
+    try:
+        load(kind, settings)
+        return ""
+    except DTDNotFound as e:
+        return str(e)

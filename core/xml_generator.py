@@ -215,10 +215,22 @@ def _digits(text: str) -> str:
 # Used only to split a caption's own leading label out of its body text when
 # the figure has no separately-drawn Label zone of its own; see
 # extract_figure_label_and_caption / XMLGenerator._extract_figure_label.
-_FIGURE_LABEL_CORE = r"(?:Figura|Figure|Fig\.)\s+\d+[-–]\d+"
+# number: "5-1", "10–7", "1.2.3", "12", "3a" ; an optional qualifier word ("Figura técnica 1.4.1")
+_LABEL_NUMBER = r"\d+[a-z]?(?:[-–.]\d+[a-z]?)*"
+_FIGURE_LABEL_CORE = (r"(?:Figura|Figure|Fig\.|Abbildung|Abb\.|Figuur)(?:\s+[a-záéíóúñç]{3,})?\s+" + _LABEL_NUMBER)
 _FIGURE_LABEL_WRAPPED_RE = re.compile(
-    rf"^<(bold|italic)>\s*({_FIGURE_LABEL_CORE})\s*[.:]?\s*</\1>", re.IGNORECASE)
+    rf"^<(bold|italic|b|i)>\s*({_FIGURE_LABEL_CORE})\s*[.:]?\s*</\1>", re.IGNORECASE)
 _FIGURE_LABEL_PLAIN_RE = re.compile(rf"^({_FIGURE_LABEL_CORE})\s*[.:]?\s*", re.IGNORECASE)
+
+
+def _label_opening_styled_run(text: str, core: str):
+    """"<bold>Tabla 1.1.1  Propiedades ...</bold>" / "<bold>Figura técnica
+    1.4.1. A.</bold> La ...": the label opens a bold/italic run that goes on
+    past it - the label comes out, the rest keeps its own formatting."""
+    m = re.match(rf"^<(bold|italic|b|i)>\s*({core})(?![-–.]?\d)\s*[.:]?[\s\u2002\u2003]*(?!</\1>)", text, re.IGNORECASE)
+    if not m:
+        return None, None
+    return m.group(2), f"<{m.group(1)}>" + text[m.end():]
 
 
 def extract_figure_label_and_caption(text: str):
@@ -240,7 +252,7 @@ def extract_figure_label_and_caption(text: str):
     m = _FIGURE_LABEL_PLAIN_RE.match(text)
     if m:
         return m.group(1), text[m.end():].lstrip()
-    return None, None
+    return _label_opening_styled_run(text, _FIGURE_LABEL_CORE)
 
 
 # Leading table-number label at the start of a Table Caption zone's own
@@ -262,9 +274,9 @@ def extract_figure_label_and_caption(text: str):
 # as a match beyond that literal 5-letter sequence, so it can't false-
 # positive on unrelated text.
 _TABLE_KEYWORD_CORE = r"(?:T\s*a\s*b\s*l\s*a|T\s*a\s*b\s*l\s*e)"
-_TABLE_LABEL_CORE = rf"{_TABLE_KEYWORD_CORE}\s+\d+[-–.]\d+"
+_TABLE_LABEL_CORE = rf"{_TABLE_KEYWORD_CORE}(?:\s+[a-záéíóúñç]{{3,}})?\s+{_LABEL_NUMBER}"
 _TABLE_LABEL_WRAPPED_RE = re.compile(
-    rf"^<(bold|italic)>\s*({_TABLE_LABEL_CORE})\s*[.:]?\s*</\1>", re.IGNORECASE)
+    rf"^<(bold|italic|b|i)>\s*({_TABLE_LABEL_CORE})\s*[.:]?\s*</\1>", re.IGNORECASE)
 _TABLE_LABEL_PLAIN_RE = re.compile(rf"^({_TABLE_LABEL_CORE})\s*[.:]?\s*", re.IGNORECASE)
 
 # Fallback patterns for when the keyword and its number were extracted as
@@ -272,7 +284,7 @@ _TABLE_LABEL_PLAIN_RE = re.compile(rf"^({_TABLE_LABEL_CORE})\s*[.:]?\s*", re.IGN
 # badge) rather than appearing together on one line - see
 # extract_table_label_and_caption_from_lines.
 _TABLE_KEYWORD_ONLY_RE = re.compile(rf"^{_TABLE_KEYWORD_CORE}\s*[.:]?\s*$", re.IGNORECASE)
-_TABLE_BARE_NUMBER_RE = re.compile(r"^(\d+[-–.]\d+)\s*[.:]?\s*$")
+_TABLE_BARE_NUMBER_RE = re.compile(r"^(\d+[a-z]?(?:[-–.]\d+[a-z]?)+)\s*[.:]?\s*$")
 _LETTERSPACED_WORD_RE = re.compile(r"\b(?:[A-Za-z]\s+){2,}[A-Za-z]\b")
 
 
@@ -303,6 +315,9 @@ def extract_table_label_and_caption(text: str):
     m = _TABLE_LABEL_PLAIN_RE.match(text)
     if m:
         return _collapse_letterspacing(m.group(1)).strip(), text[m.end():].lstrip()
+    label, rest = _label_opening_styled_run(text, _TABLE_LABEL_CORE)
+    if label:
+        return _collapse_letterspacing(label).strip(), rest
     return None, None
 
 
@@ -392,6 +407,10 @@ _LIST_MARKER_PATTERNS = {
     "alpha-upper": re.compile(r"^\s*[A-Z][.)]\s*"),
     "alpha-lower": re.compile(r"^\s*[a-z][.)]\s*"),
     "simple": re.compile(r"^\s*[•\-*•●■⁃]\s*"),
+    "bullet": re.compile(r"^\s*[•\-*●■▪◆♦‣⁃–—]\s*"),
+    "order": re.compile(r"^\s*\d+[.)]\s*"),
+    "roman-lower": re.compile(r"^\s*[ivxlc]+[.)]\s*"),
+    "roman-upper": re.compile(r"^\s*[IVXLC]+[.)]\s*"),
 }
 
 
@@ -513,6 +532,49 @@ def _parse_citation(text: str) -> dict:
     # rather than fabricating source/year/pages that aren't actually there.
     result["article_title"] = rest.rstrip(".").strip() or None
     return result
+
+
+def _citation_keeps_words(mc_el, raw: str) -> bool:
+    compact = re.sub(r"\s+", "", "".join(mc_el.itertext()))
+    for w in raw.split():
+        core = w.strip(".,;:()[]")
+        if core and core not in compact:
+            return False
+    return True
+
+
+def _raw_citation_with_ids(mc_el, raw: str):
+    """raw text, with its DOI as <pub-id pub-id-type="doi"> and URL as <uri>
+    where they stand - nothing reordered, nothing dropped."""
+    spans = []
+    for rx, kind in ((_DOI_RE, "doi"), (_URL_RE, "uri")):
+        for m in rx.finditer(raw):
+            g = 1 if kind == "doi" else 0
+            val_start, val_end = m.start(g), m.end(g)
+            while val_end > val_start and raw[val_end - 1] in ".,;)":
+                val_end -= 1
+            if not any(a < val_end and val_start < b for a, b, _k in spans):
+                spans.append((val_start, val_end, kind))
+    spans.sort()
+    pos, last = 0, None
+    mc_el.text = ""
+    for a, b, kind in spans:
+        chunk = sanitize_xml_text(raw[pos:a])
+        if last is None:
+            mc_el.text += chunk
+        else:
+            last.tail = (last.tail or "") + chunk
+        if kind == "doi":
+            last = etree.SubElement(mc_el, "pub-id", attrib={"pub-id-type": "doi"})
+        else:
+            last = etree.SubElement(mc_el, "uri")
+        last.text = sanitize_xml_text(raw[a:b])
+        pos = b
+    tail = sanitize_xml_text(raw[pos:])
+    if last is None:
+        mc_el.text += tail
+    else:
+        last.tail = (last.tail or "") + tail
 
 
 def _split_bibliography_title(own_text: str):
@@ -1958,8 +2020,14 @@ class XMLGenerator:
         # Nothing recognizable at all (e.g. an empty/garbled zone) - never
         # emit a bare <mixed-citation/>, preserve whatever text there was
         # (spec Pattern 30: prefer preserving content over an empty element).
-        if len(mc_el) == 0 and citation["raw"]:
-            mc_el.text = sanitize_xml_text(citation["raw"])
+        # The same when the parse did not account for every word of the
+        # reference (e.g. a numbered "3. Nitsche J ..." whose author list
+        # did not match, leaving only its DOI): the original text is kept
+        # verbatim, with the DOI / URL tagged in place.
+        if citation["raw"] and (len(mc_el) == 0 or not _citation_keeps_words(mc_el, citation["raw"])):
+            for child in list(mc_el):
+                mc_el.remove(child)
+            _raw_citation_with_ids(mc_el, citation["raw"])
 
     def _zone_table_caption(self, zone):
         """Fallback path for a table-caption zone that was NOT consumed as
@@ -1980,7 +2048,7 @@ class XMLGenerator:
             el.append(_parse_inline(f"<label>{label}</label>"))
         cap_text = normalize_title_text(caption_text)
         if cap_text:
-            cap_el = etree.Element("caption", attrib={"id": f"{self.prefix}-cap{tbl_num:03d}"})
+            cap_el = etree.Element("caption", attrib={"id": f"{self.prefix}-tcap{tbl_num:03d}"})
             cap_el.append(_parse_inline(f"<title>{cap_text}</title>"))
             el.append(cap_el)
         return el
@@ -2136,9 +2204,10 @@ class XMLGenerator:
     def _build_cell_list_element(self, items):
         list_el = etree.Element("list", attrib={"list-type": "bullet"})
         for item_text in items:
+            if not (item_text or "").strip():
+                continue                  # never an empty <list-item/> (invalid BITS/JATS)
             li_el = etree.SubElement(list_el, "list-item")
-            if item_text:
-                li_el.append(_parse_inline(f"<p>{item_text}</p>"))
+            li_el.append(_parse_inline(f"<p>{item_text}</p>"))
         return list_el
 
     def _zone_table(self, zone):
@@ -2167,7 +2236,7 @@ class XMLGenerator:
                 wrap_el.append(_parse_inline(f"<label>{label}</label>"))
             cap_text = normalize_title_text(caption_text)
             if cap_text:
-                cap_el = etree.Element("caption", attrib={"id": f"{self.prefix}-cap{tbl_num:03d}"})
+                cap_el = etree.Element("caption", attrib={"id": f"{self.prefix}-tcap{tbl_num:03d}"})
                 cap_el.append(_parse_inline(f"<title>{cap_text}</title>"))
                 self._append_table_caption_once(wrap_el, cap_el)
 

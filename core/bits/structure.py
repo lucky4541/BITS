@@ -45,7 +45,11 @@ ARTICLE_META_TAGS = ("article-title", "subtitle", "contrib", "aff", "corresp", "
 LIST_TYPES = {"number": "order", "numbered": "order", "decimal": "order", "upper-alpha": "alpha-upper",
               "lower-alpha": "alpha-lower", "upper-roman": "roman-upper", "lower-roman": "roman-lower"}
 _NUM_LABEL_RE = re.compile(r"^\s*(\[?\d+[a-z]?\]?|[*†‡§]+)[.)]?\s+")
-_CHAPTER_LABEL_RE = re.compile(r"^\s*((?:chapter|part|appendix)\s+[\dIVXLCivxlc]+|[\dIVXL]+)[.:]?\s+(?=\S)", re.I)
+# "Chapter 1", "Capítulo 1.2", "Chapitre IV", "Kapitel 3", "Parte II", "Sección I" ... or a bare number
+_LABEL_WORDS = (r"chapter|part|appendix|section|cap[ií]tulo|parte|secci[oó]n|ap[eé]ndice|anexo|chapitre|partie|"
+                r"annexe|kapitel|teil|anhang|capitolo|appendice|cap[ií]tulo")
+_CHAPTER_LABEL_RE = re.compile(r"^\s*((?:" + _LABEL_WORDS + r")\s+[\dIVXLCivxlc]+(?:\.\d+)*|[\dIVXL]+(?:\.\d+)*)"
+                               r"[.:]?\s+(?=\S)", re.I)
 _ISBN_RE = re.compile(r"((?:97[89][\s\-]?)?\d[\d\s\-]{7,15}[\dXx])")
 
 
@@ -339,14 +343,20 @@ def _place_page_targets(root):
         parent = t.getparent()
         if parent is None or parent.tag not in _BLOCK_WITH_P:
             continue
-        nxt = t.getnext()
-        while nxt is not None and not isinstance(nxt.tag, str):
-            nxt = nxt.getnext()
+        # nearest paragraph before the marker (skipping figures / tables /
+        # other markers that hold no paragraph), else the nearest after it
+        before = after = None
         prv = t.getprevious()
-        while prv is not None and not isinstance(prv.tag, str):
+        while prv is not None and before is None:
+            if isinstance(prv.tag, str) and prv.tag not in ("target", "caption"):
+                before = prv if prv.tag in _TEXT_HOLDERS else _last_p_outside_captions(prv)
             prv = prv.getprevious()
-        before = None if prv is None else (prv if prv.tag == "p" else _last_p(prv))
-        after = None if nxt is None else (nxt if nxt.tag == "p" else _first_p(nxt))
+        if before is None:
+            nxt = t.getnext()
+            while nxt is not None and after is None:
+                if isinstance(nxt.tag, str) and nxt.tag not in ("target", "caption"):
+                    after = nxt if nxt.tag in _TEXT_HOLDERS else _first_p_outside_captions(nxt)
+                nxt = nxt.getnext()
         if before is not None:            # the page ends after the preceding text
             _detach(t)
             before.append(t)
@@ -359,6 +369,22 @@ def _place_page_targets(root):
 
 
 _TEXT_HOLDERS = ("p", "term")
+
+
+def _paras_outside_captions(el):
+    return [x for x in el.iter(*_TEXT_HOLDERS)
+            if not any(a.tag in ("caption", "table-wrap-foot", "td", "th", "title") for a in x.iterancestors())
+            or x is el]
+
+
+def _last_p_outside_captions(el):
+    ps = _paras_outside_captions(el)
+    return ps[-1] if ps else None
+
+
+def _first_p_outside_captions(el):
+    ps = _paras_outside_captions(el)
+    return ps[0] if ps else None
 
 
 def _last_p(el):
@@ -386,8 +412,20 @@ def _detach(el):
 # ================================================================ metadata
 def parse_names(text):
     """"James I. Wimsatt and Jane Roe" -> [("Wimsatt", "James I."), ("Roe", "Jane")]."""
-    text = re.sub(r"^\s*(?:by|edited by)\s+", "", text or "", flags=re.I)
-    parts = [p.strip(" ,") for p in re.split(r"\s*(?:,\s*and\s+|\band\b|&|;)\s*", text) if p.strip(" ,")]
+    text = re.sub(r"^\s*(?:by|edited by|por|par|von|di)\s+", "", text or "", flags=re.I)
+    # "and" / Spanish "y" / French "et" / German "und" join names
+    parts = [p.strip(" ,") for p in re.split(r"\s*(?:,\s*(?:and|y|et|und)\s+|\b(?:and|y|et|und)\b|&|;)\s*", text)
+             if p.strip(" ,")]
+    # "Gunes Orman, Amy Mehollin-Ray, Thierry A. Huisman": a list of full
+    # names (every comma piece has 2+ words), not "Surname, Given"
+    split = []
+    for p in parts:
+        pieces = [x.strip() for x in p.split(",") if x.strip()]
+        if len(pieces) > 1 and all(len(x.split()) >= 2 for x in pieces):
+            split.extend(pieces)
+        else:
+            split.append(p)
+    parts = split
     out = []
     for p in parts:
         if "," in p:
@@ -404,18 +442,32 @@ def parse_names(text):
     return out
 
 
+_NAME_STYLE_TAGS = ("bold", "italic", "sc", "underline", "b", "i", "u")
+
+
 def _contrib_group(contribs, ids):
     group = _el("contrib-group")
     for c in contribs:
         ctype = c.get("contrib-type") or "author"
-        if len(c) or not text_of(c):
+        # a byline set in bold/italic is still just names
+        only_style = all(isinstance(k.tag, str) and k.tag in _NAME_STYLE_TAGS and not len(k) for k in c)
+        if (len(c) and not only_style) or not text_of(c):
             con = _el("contrib", contrib_type=ctype)
             sn = _el("string-name")
             _move_content(c, sn)
             con.append(sn)
             group.append(con)
             continue
-        for sur, given in parse_names(text_of(c)):
+        names = parse_names(text_of(c))
+        # joiners ("and", "y", ",") become the contrib structure - declared, not lost
+        from collections import Counter
+        kept = Counter(w for sur, given in names for w in f"{given} {sur}".split())
+        for w in text_of(c).split():
+            if kept[w] > 0:
+                kept[w] -= 1
+            else:
+                DECLARED.append(w)
+        for sur, given in names:
             con = _el("contrib", contrib_type=ctype)
             name = _el("name")
             name.append(_el("surname", sur))
@@ -532,8 +584,18 @@ def build_bits_book(gen_root, settings=None, prefix="b"):
     def target_list():
         return current.content if current is not None else loose_front
 
+    pending_label = None                # a "Chapter Number / Label" zone just before a part heading
+    items = _hoist_chapter_labels(items)
+
     for it in items:
         tag = it.tag
+        opens_part = tag == "sec" and (it.get(PART_TYPE_ATTR) or current is None)
+        if pending_label is not None and not opens_part:
+            target_list().append(pending_label)
+            pending_label = None
+        if tag == "label" and _is_chapter_label(it):
+            pending_label = it
+            continue
         if tag in meta and (current is None or tag in ("book-title", "book-subtitle", "isbn", "publisher-name",
                                                         "publisher-loc", "series-title", "edition",
                                                         "copyright-statement")):
@@ -545,6 +607,14 @@ def build_bits_book(gen_root, settings=None, prefix="b"):
         if tag == "sec" and it.get(PART_TYPE_ATTR) or tag == "sec" and current is None:
             kind = it.get(PART_TYPE_ATTR) or "chapter"
             it.attrib.pop(PART_TYPE_ATTR, None)
+            if pending_label is not None:
+                if pending_title_group is None:
+                    pending_title_group = _el("title-group")
+                if pending_title_group.find("label") is None:
+                    pending_title_group.insert(0, pending_label)
+                else:
+                    target_list().append(pending_label)
+                pending_label = None
             part = _Part(kind, it, pending_title_group)
             pending_title_group = None
             # the heading's own section content is the part's body
@@ -586,11 +656,40 @@ def build_bits_book(gen_root, settings=None, prefix="b"):
             continue
         target_list().append(it)
 
+    if pending_label is not None:
+        target_list().append(pending_label)
+    # page markers that precede all content (the page-1 marker before the
+    # first heading) belong in the first paragraph, not an empty front matter
+    lead_targets = []
+    while loose_front and loose_front[0].tag == "p" and not text_of(loose_front[0]).strip() \
+            and len(loose_front[0]) and all(c.tag == "target" for c in loose_front[0]):
+        lead_targets += list(loose_front.pop(0))
+    if lead_targets:
+        def walk(parts):
+            for part in parts:
+                yield part
+                yield from walk(getattr(part, "children", []))
+        first_p = None
+        for part in walk(front + body_parts):
+            first_p = next((p for c in part.content for p in c.iter("p") if text_of(p).strip()), None)
+            if first_p is not None:
+                break
+        if first_p is not None:
+            for t in reversed(lead_targets):
+                t.tail = (t.tail or "") + (first_p.text or "")
+                first_p.text = None
+                first_p.insert(0, t)
+        else:
+            loose_front.append(_el("p"))
+            loose_front[-1].extend(lead_targets)
     book = etree.Element("book", nsmap={"xlink": XLINK_NS, "mml": MML_NS})
     book.set("dtd-version", "2.2")
     book.set(XML_LANG, settings.get("language", "en"))
     if settings.get("book_type"):
         book.set("book-type", settings["book_type"])
+    cm = _collection_meta(meta)
+    if cm is not None:
+        book.append(cm)
     book.append(_book_meta(meta, settings, ids))
     if front or loose_front:
         fm = etree.SubElement(book, "front-matter")
@@ -643,6 +742,37 @@ def build_bits_book(gen_root, settings=None, prefix="b"):
         if index_entries or idx_part is not None:
             back.append(_index(idx_part, index_entries, ids))
     return book
+
+
+def _is_chapter_label(el):
+    return el.tag == "label" and bool(_CHAPTER_LABEL_RE.match(text_of(el).strip() + " x"))
+
+
+def _trailing_label(el):
+    """A chapter label ("Capítulo 1.2") that the generator nested at the very
+    end of the previous chapter's last section."""
+    while True:
+        kids = [c for c in el if isinstance(c.tag, str)]
+        if not kids:
+            return None
+        last = kids[-1]
+        if _is_chapter_label(last):
+            return last
+        if last.tag not in ("sec", "body", "boxed-text"):
+            return None
+        el = last
+
+
+def _hoist_chapter_labels(items):
+    out = []
+    for it in items:
+        if it.tag == "sec" and it.get(PART_TYPE_ATTR) and out and not _is_chapter_label(out[-1]):
+            lab = _trailing_label(out[-1])
+            if lab is not None:
+                _detach(lab)
+                out.append(lab)
+        out.append(it)
+    return out
 
 
 def _absorb_part_items(part, index_entries):
@@ -698,7 +828,7 @@ def _title_group(part):
     if label is None and title is not None and title.text:
         m = _CHAPTER_LABEL_RE.match(title.text)
         if m and part.kind in ("chapter", "part", "appendix") and len(title.text) > m.end():
-            label = _el("label", m.group(1))
+            label = _el("label", title.text[:m.end()].strip())     # keep "I." / "1:" punctuation
             title.text = title.text[m.end():]
     if label is not None:
         tg.append(label)
@@ -712,7 +842,90 @@ def _title_group(part):
     return tg
 
 
+_REF_HEADING_RE = re.compile(
+    r"^\s*(references?|key references|bibliography|further reading|suggested reading|works cited|"
+    r"referencias?( clave| bibliogr[aá]ficas)?|bibliograf[ií]a|lecturas( recomendadas)?|"
+    r"r[eé]f[eé]rences( bibliographiques)?|literatur(verzeichnis)?|riferimenti( bibliografici)?|bibliografia)\s*$",
+    re.I)
+
+
+def _is_empty_ref_heading(sec):
+    if sec.tag != "sec":
+        return False
+    rest = [c for c in sec if isinstance(c.tag, str) and c.tag != "title"]
+    if any(c.tag != "target" for c in rest) or text_of(sec).strip() == "":
+        return False
+    title = text_of(sec.find("title")) if sec.find("title") is not None else ""
+    return sec.get("sec-type") == "references" or bool(_REF_HEADING_RE.match(title))
+
+
+def _ref_labels(rl):
+    """"1. Rose J, Tuma F. ..." -> <ref><label>1.</label><mixed-citation>Rose J ..."""
+    for ref in rl.iter("ref"):
+        if ref.find("label") is not None:
+            continue
+        mc = ref.find("mixed-citation")
+        if mc is None or not mc.text:
+            continue
+        m = re.match(r"^\s*(\[?\d+[a-z]?[.)\]]?)\s+", mc.text)
+        if m:
+            ref.insert(ref.index(mc), _el("label", m.group(1)))
+            mc.text = mc.text[m.end():]
+
+
+def _title_ref_lists(part):
+    """A chapter's reference heading ("REFERENCIAS CLAVE") is the title of its
+    reference list, not an empty section; a list split by a column / page
+    break is one list."""
+    if not part.refs:
+        return
+    merged = []
+    for rl in part.refs:
+        if merged and rl.find("title") is None:
+            for c in list(rl):
+                merged[-1].append(c)
+            continue
+        merged.append(rl)
+    part.refs = merged
+    heads = [s for c in part.content for s in c.iter("sec") if _is_empty_ref_heading(s)]
+    untitled = [rl for rl in merged if rl.find("title") is None]
+    for sec, rl in zip(heads, untitled):
+        title = sec.find("title")
+        rl.insert(0, title)
+        targets = [t for t in sec if t.tag == "target"]
+        first = rl.find(".//mixed-citation")
+        for t in reversed(targets):
+            if first is not None:
+                t.tail = first.text
+                first.text = None
+                first.insert(0, t)
+        if sec in part.content:
+            part.content.remove(sec)
+        if sec.getparent() is not None:
+            _detach(sec)
+    for rl in merged:
+        _ref_labels(rl)
+
+
+def _sections_last(blocks):
+    """JATS / BITS content models put a container's paragraphs, lists,
+    figures ... BEFORE its sections. A block that follows a section in the
+    reading order belongs to that section (its last, deepest subsection) -
+    the reading order is kept, nothing is reordered."""
+    out = []
+    for b in blocks:
+        if out and out[-1].tag == "sec" and b.tag not in ("sec", "target"):
+            host = out[-1]
+            while len(host) and host[-1].tag == "sec":
+                host = host[-1]
+            host.append(b)
+            continue
+        out.append(b)
+    return out
+
+
 def _part_meta_and_body(el, part, ids):
+    _title_ref_lists(part)
     bpm = etree.SubElement(el, "book-part-meta")
     bpm.append(_title_group(part))
     contribs = [m for m in part.meta if m.tag == "chapter-contrib"]
@@ -726,7 +939,7 @@ def _part_meta_and_body(el, part, ids):
         bpm.append(_kwd_group(kwds))
     if part.content or part.children:
         body = etree.SubElement(el, "body")
-        body.extend(_as_blocks(part.content))
+        body.extend(_sections_last(_as_blocks(part.content)))
         for ch in part.children:
             body.append(_book_part(ch, ids))
     if part.notes or part.refs:
@@ -794,14 +1007,6 @@ def _book_meta(meta, settings, ids):
         bm.append(_el("book-id", settings["book_id"], book_id_type=settings.get("book_id_type", "publisher-id")))
     if settings.get("doi"):
         bm.append(_el("book-id", settings["doi"], book_id_type="doi"))
-    if meta["series-title"]:
-        cm = _el("collection-meta")
-        tg = etree.SubElement(cm, "title-group")
-        for s in meta["series-title"]:
-            t = _el("title")
-            _move_content(s, t)
-            tg.append(t)
-        bm.append(cm)
     btg = etree.SubElement(bm, "book-title-group")
     titles = meta["book-title"]
     bt = _el("book-title", settings.get("book_title") if not titles else None)
@@ -820,11 +1025,6 @@ def _book_meta(meta, settings, ids):
         aff = _el("aff", id=ids.next("aff"))
         _move_content(a, aff)
         bm.append(aff)
-    if meta["edition"]:
-        ed = _el("edition")
-        for e in meta["edition"]:
-            _move_content(e, ed)
-        bm.append(ed)
     for i in meta["isbn"]:
         bm.append(_isbn_el(i))
     if settings.get("isbn") and not meta["isbn"]:
@@ -839,9 +1039,28 @@ def _book_meta(meta, settings, ids):
             pl = _el("publisher-loc")
             _move_content(loc, pl)
             pub.append(pl)
+    if meta["edition"]:                 # BITS book-meta order: isbn*, publisher*, edition*, permissions?
+        ed = _el("edition")
+        for e in meta["edition"]:
+            _move_content(e, ed)
+        bm.append(ed)
     if meta["copyright-statement"]:
         bm.append(_permissions(meta["copyright-statement"]))
     return bm
+
+
+def _collection_meta(meta):
+    """Series title -> <collection-meta>, a sibling BEFORE <book-meta>
+    (BITS: book = processing-meta?, collection-meta*, book-meta?, ...)."""
+    if not meta["series-title"]:
+        return None
+    cm = _el("collection-meta")
+    tg = etree.SubElement(cm, "title-group")
+    for s in meta["series-title"]:
+        t = _el("title")
+        _move_content(s, t)
+        tg.append(t)
+    return cm
 
 
 def _index(idx_part, entries, ids):
@@ -1066,4 +1285,79 @@ def build(kind, gen_root, settings=None, prefix=None):
     else:
         root = build_jats_article(gen_root, settings, prefix or "a")
     _place_page_targets(root)
+    _join_continuations(root)
     return root
+
+
+_FLOW_PARENTS = ("sec", "body", "named-book-part-body", "list-item", "boxed-text", "app", "notes", "ack",
+                 "preface", "foreword", "dedication", "book-app")
+_NOT_FLOW = ("caption", "table-wrap", "fig", "ref-list", "fn", "title-group", "book-part-meta", "abstract",
+             "disp-quote", "def-list")
+
+
+def _plain_start(p):
+    for t in p.itertext():
+        t = t.lstrip()
+        if t:
+            return t
+    return ""
+
+
+def _join_continuations(root):
+    """A paragraph that continues the text before a column / page break,
+    past a figure or table set in between ("... disminuyen desde el 0 hasta
+    el ta-" | table | "maño USP 2-0 ..."), is the same paragraph: it starts
+    lowercase and the text before it stops mid-sentence. It is joined to
+    that paragraph (or list item paragraph); a word hyphenated across the
+    break is rejoined. Nothing is reordered within the text itself."""
+    last = None
+    for p in list(root.iter("p")):
+        if any(a.tag in _NOT_FLOW for a in p.iterancestors()):
+            continue
+        start = _plain_start(p)
+        if (last is not None and p.getparent() is not None and p.getparent().tag in _FLOW_PARENTS
+                and start[:1].isalpha() and start[:1].islower()):
+            prev_text = "".join(last.itertext()).rstrip()
+            if prev_text and prev_text[-1] not in ".!?:;)»”\"":
+                _append_paragraph(last, p, hyphen=bool(re.search(r"\w-$", prev_text)))
+                continue
+        last = p
+
+
+def _append_paragraph(dst, src, hyphen):
+    # where dst's text ends: the tail of its last child, or its own text
+    if len(dst):
+        tail_holder = dst[-1]
+        end = tail_holder.tail or ""
+    else:
+        tail_holder, end = None, dst.text or ""
+    if hyphen and end.rstrip().endswith("-"):
+        stripped = end.rstrip()
+        frag = re.search(r"(\w+-)$", stripped).group(1)
+        end = stripped[:-1]
+        first = _plain_start(src).split()[0] if _plain_start(src).split() else ""
+        DECLARED.extend([frag, first])          # "múscu-" + "los" -> "músculos"
+        sep = ""
+    else:
+        end = end.rstrip()
+        sep = " "
+    if tail_holder is None:
+        dst.text = end
+    else:
+        tail_holder.tail = end
+    text = (src.text or "").lstrip()
+    if tail_holder is None and not len(dst):
+        dst.text = end + sep + text
+    else:
+        holder = dst[-1]
+        holder.tail = (holder.tail or "") + sep + text
+    for c in list(src):
+        dst.append(c)
+    parent = src.getparent()
+    if src.tail and src.tail.strip():
+        prev = src.getprevious()
+        if prev is not None:
+            prev.tail = (prev.tail or "") + src.tail
+        else:
+            parent.text = (parent.text or "") + src.tail
+    parent.remove(src)

@@ -79,7 +79,9 @@ setting `bits_meta` (journal id / title / ISSN / publisher) or placeholders.
   found; the MathML 3 variant is preferred) – or choose the DTD file in
   *Settings › BITS 2.2 DTD file*.
   Until then BITS output is still generated and checked for lost text, and the
-  status says `NOT VALIDATED - DTD not installed`.
+  status says `NOT VALIDATED - DTD not installed` (or `DTD incomplete`, naming
+  the missing module files, when only `BITS-book2-2.dtd` itself is present -
+  the top-level file loads ~14 BITS modules plus the JATS 1.4 modules).
 
 The DOCTYPE written to the output uses the DTD's own public identifier.
 
