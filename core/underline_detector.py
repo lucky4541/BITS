@@ -211,7 +211,7 @@ def page_decoration_segments(page) -> list:
     # the (invisible) native text layer still supplies exact glyph boxes.
     try:
         from core.ocr.style_detector import page_is_image_dominated
-        if page_is_image_dominated(page):
+        if page_is_image_dominated(page) and _text_is_mostly_invisible(page):
             r = page.rect
             segs = segs + raster_segments_for_region(page, (r.x0, r.y0, r.x1, r.y1))
     except Exception:
@@ -220,6 +220,44 @@ def page_decoration_segments(page) -> list:
     while len(_segment_cache) > _SEGMENT_CACHE_MAXSIZE:
         _segment_cache.popitem(last=False)
     return segs
+
+
+# Glyphs whose own ink below / at the baseline (serif feet, descender
+# tails) looks like a short underline in a page image.
+SERIF_FOOT_GLYPHS = set("ilrtfhkmnpqxyzIJLTEFPRDBHKMNXYZ1j")
+
+
+def _single_glyph_underline(c, box, seg) -> bool:
+    """An image ink run under exactly ONE glyph is an underline only when it
+    spans the whole glyph (a serif foot or descender tail is narrower) and
+    the glyph has no foot / descender of its own."""
+    if not c or c in DESCENDER_GLYPHS or c in SERIF_FOOT_GLYPHS or box is None:
+        return False
+    width = max(box[2] - box[0], 0.01)
+    return _overlap(box[0], box[2], seg.x0, seg.x1) / width >= 0.9
+
+
+def _text_is_mostly_invisible(page) -> bool:
+    """True for a searchable scan: the page's text layer is invisible (render
+    mode 3 / zero opacity) and the visible letters are in the image. A page
+    whose glyphs are really drawn (a digital page with a full-page
+    background, a large figure or a tinted panel) has its underlines as
+    vector objects - scanning its image would read serif feet and descenders
+    of single letters as underlines."""
+    try:
+        trace = page.get_texttrace()
+    except Exception:
+        return True
+    hidden = shown = 0
+    for t in trace:
+        n = len(t.get("chars") or ())
+        if t.get("type") == 3 or (t.get("opacity") is not None and t.get("opacity") <= 0.01):
+            hidden += n
+        else:
+            shown += n
+    if hidden + shown == 0:
+        return True
+    return hidden >= 0.5 * (hidden + shown)
 
 
 # ------------------------------------------------------- char assignment
@@ -328,6 +366,10 @@ def assign_decorations(chars: list, segments: list, font_size: float = None):
                     hit_set.add(i)
                     covered += _overlap(bx0, bx1, seg.x0, seg.x1)
         hit = sorted(hit_set)
+        solo = [i for i in hit if not _is_space(chars[i])]
+        if seg.source.startswith("raster") and len(solo) == 1 and \
+                not _single_glyph_underline(chars[solo[0]].get("c", ""), boxes[solo[0]], seg):
+            continue
         if all(chars[i].get("c", "") in LINE_LIKE_GLYPHS for i in hit if not _is_space(chars[i])):
             # The "segment" is the glyph itself (an em dash, an underscore).
             continue
@@ -802,7 +844,7 @@ def raster_line_decorations(ink, text: str, scale: float = 1.0, origin=(0.0, 0.0
                 hits.append(i)
         if hits and all(text[i] in LINE_LIKE_GLYPHS for i in hits):
             continue
-        if seg.source == "raster-underline" and len(hits) == 1 and text[hits[0]] in DESCENDER_GLYPHS:
+        if len(hits) == 1 and not _single_glyph_underline(text[hits[0]], chars[hits[0]]["bbox"], seg):
             continue
         for i in hits:
             flags[i] = True

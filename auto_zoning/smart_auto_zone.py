@@ -28,7 +28,7 @@ from auto_zoning.layout_engine import LayoutBlock, PageLayout, DocumentContext
 from auto_zoning.semantic_classifier import RoleCandidate
 
 ENGINE_VERSION = "layout-semantic-v1"
-ANALYSIS_VERSION = 2          # bump when layout / role logic changes: cached page analyses are redone
+ANALYSIS_VERSION = 3          # bump when layout / role logic changes: cached page analyses are redone
 OVERLAP_DROP = 0.5            # a candidate overlapping a protected zone by this much is dropped
 _MEMORY_CACHE_MAX = 64
 

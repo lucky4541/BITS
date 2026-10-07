@@ -413,3 +413,31 @@ def test_engine_bookkeeping_never_reaches_output(book, bits_profile, decor_mode,
     for key in ("auto_engine", "auto_role", "confidence", "needs_review", "locked", "manual_override", "tag_label",
                 "part_type", "data-part-type"):
         assert f'{key}="' not in xml, key
+
+
+def test_no_underlines_on_digital_page_with_background_image():
+    """A digital page whose text sits on a full-page image (tinted page,
+    scanned background) - the visible vector glyphs carry no underline, and
+    the serif feet / descenders of single letters in the page image must not
+    be read as underlines."""
+    import fitz
+    from core import underline_detector
+    doc = fitz.open()
+    page = doc.new_page(width=420, height=300)
+    text = "El cerebro y los nervios del sistema nervioso los estimulan a actuar; las arterias aportan"
+    # the page image holds the same text in a serif face (as a print scan would)
+    src = fitz.open()
+    sp = src.new_page(width=420, height=300)
+    sp.insert_text((20, 60), text[:45], fontname="tiro", fontsize=11)
+    sp.insert_text((20, 80), text[45:], fontname="tiro", fontsize=11)
+    pix = sp.get_pixmap(dpi=200)
+    page.insert_image(page.rect, pixmap=pix)
+    page.insert_text((20, 60), text[:45], fontname="tiro", fontsize=11)
+    page.insert_text((20, 80), text[45:], fontname="tiro", fontsize=11)
+    underline_detector.clear_cache()
+    text_extractor.set_decoration_detection_enabled(True)
+    try:
+        out = text_extractor.extract_formatted_text(page, (0, 0, 420, 300))
+    finally:
+        text_extractor.set_decoration_detection_enabled(False)
+    assert text_extractor._decoration_tag("underline") not in out, out

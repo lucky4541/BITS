@@ -372,6 +372,23 @@ def _vector_figures(page, exclude_boxes, page_w, page_h, body_lines=()) -> list:
     return out
 
 
+_TOC_ENTRY = re.compile(r"(?:/|\.{3,}|…)\s*[\divxlcIVXLC]+\s*$")
+
+
+def _is_text_not_table(lines) -> bool:
+    """A "table" found by ruling / alignment that is really running text: a
+    chapter outline or contents list ("Anatomía regional / 2", "Bones ..... 17")
+    laid out in columns, or columns of prose (most lines are long sentences)."""
+    texts = [(li.text or "").strip() for li in lines if (li.text or "").strip()]
+    if len(texts) < 3:
+        return False
+    toc = sum(1 for t in texts if _TOC_ENTRY.search(t))
+    if toc >= 0.4 * len(texts):
+        return True
+    prose = sum(1 for t in texts if len(t.split()) >= 9)
+    return prose >= 0.7 * len(texts)
+
+
 def _is_background_panel(box, inside, ctx, page_w, page_h) -> bool:
     """A coloured panel / image behind real text - a chapter-opening banner,
     a shaded heading bar, a full-height tab at the page edge - is a
@@ -596,7 +613,8 @@ def analyse_page(pdf_document, page_num: int, ctx: DocumentContext, lines=None, 
     except Exception:
         tables = []
     floats = []
-    tables = [t for t in tables if len([li for li in body_lines if _inside(li, t)]) >= 3]
+    tables = [t for t in tables if len([li for li in body_lines if _inside(li, t)]) >= 3
+              and not _is_text_not_table([li for li in body_lines if _inside(li, t)])]
     for t in tables:
         inside = [li for li in body_lines if _inside(li, t)]
         blk = LayoutBlock(kind="table", bbox=tuple(t), lines=inside)
