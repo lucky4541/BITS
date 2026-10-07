@@ -66,28 +66,59 @@ class HeadingMark:
     size: float
     text: str
     kind: str = None          # REFERENCES / ENDNOTES / None (any other heading)
+    x0: float = None          # horizontal extent - the column the heading opens in
+    x1: float = None
+
+
 
 
 @dataclass
 class SectionMap:
     headings: list = field(default_factory=list)       # HeadingMark, document order
     body_size: float = 10.0
+    page_widths: dict = field(default_factory=dict)     # page -> width (column-aware reading order)
 
     def to_dict(self):
-        return {"body_size": self.body_size,
-                "headings": [[h.page, h.y0, h.y1, h.size, h.text, h.kind] for h in self.headings]}
+        return {"body_size": self.body_size, "page_widths": {str(k): v for k, v in self.page_widths.items()},
+                "headings": [[h.page, h.y0, h.y1, h.size, h.text, h.kind, h.x0, h.x1] for h in self.headings]}
 
     @classmethod
     def from_dict(cls, d):
         return cls(body_size=d.get("body_size", 10.0),
+                   page_widths={int(k): v for k, v in (d.get("page_widths") or {}).items()},
                    headings=[HeadingMark(*row) for row in d.get("headings", [])])
 
-    def region_at(self, page: int, y: float):
-        """Kind of the section that position (page, y) belongs to."""
+    # ---- reading order on a page: bands split by full-width headings,
+    # left column before right column inside a band, then top to bottom
+    def _order_key(self, page, y, x0=None, x1=None):
+        width = self.page_widths.get(page)
+        if x0 is None or not width:
+            return (0, 0, y)
+        # full-width headings, and chapter-opening titles (much larger type - their
+        # banner spans the page even when the title text itself is short)
+        seps = sorted(h.y0 for h in self.headings
+                      if h.page == page and h.x0 is not None
+                      and ((h.x1 - h.x0) >= 0.5 * width or h.size >= 1.6 * self.body_size))
+        band = sum(1 for sy in seps if sy <= y + 1)
+        full = (x1 - x0) >= 0.5 * width
+        col = 0 if full or x0 < width / 2 - 15 else 1
+        return (band, col, y)
+
+    def _before(self, h, page, y, x0=None, x1=None):
+        if h.page != page:
+            return h.page < page
+        if x0 is None or h.x0 is None:
+            return h.y0 <= y
+        return self._order_key(page, h.y0, h.x0, h.x1) <= self._order_key(page, y, x0, x1)
+
+    def region_at(self, page: int, y: float, x0: float = None, x1: float = None):
+        """Kind of the section that position (page, y [, x0..x1]) belongs to."""
         current = None
-        for h in self.headings:
-            if (h.page, h.y0) > (page, y):
-                break
+        ordered = sorted((h for h in self.headings if h.page <= page),
+                         key=lambda h: (h.page, self._order_key(h.page, h.y0, h.x0, h.x1)))
+        for h in ordered:
+            if not self._before(h, page, y, x0, x1):
+                continue
             if h.kind:
                 current = h
             elif current is not None and h.size >= current.size - 0.6:
@@ -131,6 +162,7 @@ def _page_lines(page):
 def build_section_map(pdf_document, page_count: int = None) -> SectionMap:
     n = page_count or pdf_document.page_count
     pages = []
+    page_widths = {}
     sizes = {}
     for p in range(1, n + 1):
         try:
@@ -140,11 +172,12 @@ def build_section_map(pdf_document, page_count: int = None) -> SectionMap:
             continue
         lines = _page_lines(page)
         pages.append((p, page.rect.height, lines))
+        page_widths[p] = page.rect.width
         for text, size, _b, *_ in lines:
             key = round(size * 2) / 2
             sizes[key] = sizes.get(key, 0) + len(text)
     body = max(sizes.items(), key=lambda kv: kv[1])[0] if sizes else 10.0
-    smap = SectionMap(body_size=body)
+    smap = SectionMap(body_size=body, page_widths=page_widths)
     for p, height, lines in pages:
         for k, (text, size, bold, y0, y1, x0, x1) in enumerate(lines):
             if height and y1 < HEADER_BAND * height:
@@ -152,13 +185,17 @@ def build_section_map(pdf_document, page_count: int = None) -> SectionMap:
             words = len(text.split())
             if words == 0 or words > 12 or len(text) > 90:
                 continue
+            if re.fullmatch(r"[\d\W_]+", text.strip()):
+                continue                                    # page numbers, rules of dots
+            if (y1 - y0) > 2.5 * max(size, 1.0):
+                continue                                    # rotated text (a side tab), not a heading
             bigger = size >= body * 1.12
             kind = section_kind(text)
             if not (bigger or (bold and words <= 6) or (kind and (bold or bigger or text.isupper()))):
                 continue
             if not kind and not bigger:
                 continue                                    # a bold run-in phrase is not a section boundary
-            smap.headings.append(HeadingMark(p, y0, y1, size, text, kind))
+            smap.headings.append(HeadingMark(p, y0, y1, size, text, kind, x0, x1))
     return smap
 
 
@@ -184,7 +221,7 @@ def adjust_roles(layout, role_map: dict, smap: SectionMap, page: int, candidate_
             role = "reference_heading" if hk == REFERENCES else "endnote_heading"
             cands.insert(0, candidate_cls(role, 0.96, [f"'{(b.text or '').strip()[:40]}' opens the {hk} section"]))
             continue
-        region = smap.region_at(page, (b.bbox[1] + b.bbox[3]) / 2)
+        region = smap.region_at(page, (b.bbox[1] + b.bbox[3]) / 2, b.bbox[0], b.bbox[2])
         if region is None:
             continue
         height = getattr(layout, "height", 0) or 0
@@ -237,8 +274,11 @@ def page_text_lines(pdf_page):
         prev = rows[-1] if rows else None
         if prev is not None:
             overlap = min(prev[3], ln[3]) - max(prev[1], ln[1])
-            if overlap > 0.5 * min(prev[3] - prev[1], ln[3] - ln[1]):
-                left, right = (prev, ln) if prev[0] <= ln[0] else (ln, prev)
+            left, right = (prev, ln) if prev[0] <= ln[0] else (ln, prev)
+            gap = right[0] - left[2]
+            height = max(1.0, min(prev[3] - prev[1], ln[3] - ln[1]))
+            # same baseline AND close together - never across a column gutter
+            if overlap > 0.5 * min(prev[3] - prev[1], ln[3] - ln[1]) and gap <= 2.0 * height:
                 rows[-1] = [min(prev[0], ln[0]), min(prev[1], ln[1]), max(prev[2], ln[2]), max(prev[3], ln[3]),
                             left[4] + " " + right[4]]
                 continue
@@ -315,7 +355,7 @@ def split_section_entries(layout, role_map: dict, smap: SectionMap, page: int, p
 
     def eligible(b):
         return (b.kind in ("text", "list_item")
-                and smap.region_at(page, (b.bbox[1] + b.bbox[3]) / 2) is not None
+                and smap.region_at(page, (b.bbox[1] + b.bbox[3]) / 2, b.bbox[0], b.bbox[2]) is not None
                 and not smap.heading_kind_at(page, b.bbox)
                 and not _running_like(b, height) and not _group_heading_like(b))
 

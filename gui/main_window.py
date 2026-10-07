@@ -236,13 +236,14 @@ class App:
 
         self.tag_panel = TagPanel(paned, self, self.active_tag_buttons, self.active_profile.get("tag_colors", {}),
                                    self.active_profile.get("tag_groups"))
-        paned.add(self.tag_panel, minsize=180, width=220)
+        paned.add(self.tag_panel, minsize=200, width=260)
 
         self.viewer = PDFViewerPanel(paned, self)
         paned.add(self.viewer, stretch="always", minsize=300)
 
         self.zone_tree = ZoneTreePanel(paned, self)
-        paned.add(self.zone_tree, stretch="always", minsize=240)
+        # the PDF viewer takes the extra width; the hierarchy keeps its own
+        paned.add(self.zone_tree, stretch="never", minsize=240, width=380)
         self.right_panel_collapsed = False
 
         self.split_bar = tk.Frame(root, bg=palette["warning_tint"], highlightthickness=1,
@@ -336,6 +337,11 @@ class App:
             self.root.bind(seq, lambda e: self._manual_save())
         self.root.bind("<Delete>", lambda e: self._on_delete_key())
         self.root.bind("<F7>", lambda e: self.smart_az.next_review_zone())
+        self.root.bind("<Control-Shift-A>", lambda e: self.smart_az.auto_zone_page())
+        self.root.bind("<Control-Shift-a>", lambda e: self.smart_az.auto_zone_page())
+        # Alt+1/2/3: apply the 1st/2nd/3rd suggested tag to the selected zone
+        for _i in range(3):
+            self.root.bind(f"<Alt-Key-{_i + 1}>", lambda e, i=_i: self.tag_panel.apply_suggestion(i))
         self.root.bind("<Return>", lambda e: self._confirm_split() if self.viewer.mode == "split" else None)
         self.root.bind("<Escape>", self._on_escape)
         self.root.bind("<BackSpace>", lambda e: self._clear_last_split() if self.viewer.mode == "split" else None)
@@ -548,7 +554,7 @@ class App:
         this - only its PARENT pane management changes, so nothing about
         zone data, reading order, or any other state is touched."""
         if self.right_panel_collapsed:
-            self.paned.add(self.zone_tree, stretch="always", minsize=240)
+            self.paned.add(self.zone_tree, stretch="never", minsize=240, width=380)
         else:
             self.paned.forget(self.zone_tree)
         self.right_panel_collapsed = not self.right_panel_collapsed
@@ -2485,6 +2491,130 @@ class App:
     def set_active_tag(self, tag, attrs):
         self.active_tag = (tag, attrs) if tag else None
 
+    # ------------------------------------------------------ tag suggestions
+    def tag_suggester(self):
+        """core.tag_suggest.TagSuggester for the open document (rebuilt when
+        the document, zone set or profile changes)."""
+        from core.tag_suggest import TagSuggester
+        key = (id(self.pdf_document), id(self.zone_manager), id(self.active_tag_buttons))
+        if getattr(self, "_suggester_key", None) != key or getattr(self, "_suggester", None) is None:
+            self._suggester = TagSuggester(self.pdf_document, self.zone_manager, self.active_tag_buttons,
+                                           engine_decide=self._engine_decide_cached,
+                                           language=self.settings.get("document_language"))
+            self._suggester_key = key
+        return self._suggester
+
+    def _engine_decide_cached(self, page):
+        """Auto Tag engine decisions for a page whose layout is already
+        analysed (never starts an analysis - suggestions must stay instant)."""
+        zoner = getattr(self.smart_az, "_zoner", None)
+        if zoner is None or not any(k[0] == page for k in list(zoner._memory.keys())):
+            return []
+        return zoner.decide(page)[1]
+
+    def _button_by_label(self, label):
+        return next(((lab, t, a) for lab, t, a in self.active_tag_buttons if lab == label), None)
+
+    def _attrs_for_retag(self, zone, label):
+        """The zone's attributes with the old tag button's attributes
+        replaced by the new button's (e.g. part_type=chapter for Chapter Title)."""
+        btn = self._button_by_label(label)
+        if btn is None:
+            return None, None
+        _lab, tag, battrs = btn
+        button_keys = {"tag_label", "part_type", "list_type", "asset_kind"}
+        for _l, _t, a in self.active_tag_buttons:
+            button_keys.update(a.keys())
+        attrs = {k: v for k, v in zone.attributes.items() if k not in button_keys}
+        attrs.update(battrs)
+        attrs["reviewed"] = True
+        attrs.pop("needs_review", None)
+        attrs.pop("review_reasons", None)
+        return tag, attrs
+
+    def apply_tag_label_to_zone(self, zone_id, label):
+        """Retag one zone with a tag-toolbox button (suggestion, right-click,
+        Shift+click). One undo step; the choice teaches the suggester."""
+        zone = self.zone_manager.zones.get(zone_id)
+        if zone is None:
+            return
+        tag, attrs = self._attrs_for_retag(zone, label)
+        if tag is None:
+            return
+        self.zone_manager.set_tag(zone_id, tag, attributes=attrs,
+                                  page_marker_tags=self.active_profile.get("page_marker_tags"))
+        self.tag_suggester().invalidate()
+        self.on_zones_changed(recompute_reading_order=False)
+        self.on_zone_selected(zone_id)
+        self.notify(f"Tagged {zone_id} as {label}", kind="success")
+
+    def retag_from_corrections(self):
+        """Retag the automatic zones whose style matches, with high
+        confidence, the zones the user tagged or corrected."""
+        if not self.pdf_document:
+            messagebox.showwarning("Retag From Your Corrections", "Open a PDF first.")
+            return
+        sug = self.tag_suggester()
+        sug.invalidate()
+        changes = sug.learned_retags()
+        if not changes:
+            messagebox.showinfo("Retag From Your Corrections",
+                                "Nothing to change: no automatic zone has a confident style match with the "
+                                "zones you tagged.\n\nTag or correct one zone of each style "
+                                "(e.g. one heading, one caption), then run this again.")
+            return
+        from collections import Counter
+        summary = "\n".join(f"  {n} -> {lab}" for lab, n in Counter(sg.label for _z, sg in changes).most_common(12))
+        if not messagebox.askyesno("Retag From Your Corrections",
+                                   f"Retag {len(changes)} automatic zone(s) to match your corrections?\n\n{summary}"
+                                   "\n\nYour own, locked and reviewed zones are not changed. Undo reverts all."):
+            return
+        self.zone_manager.begin_batch()
+        try:
+            for z, sg in changes:
+                tag, attrs = self._attrs_for_retag(z, sg.label)
+                if tag is not None:
+                    attrs.pop("reviewed", None)          # still the engine's zone, now style-corrected
+                    attrs["confidence"] = round(sg.score * 100, 1)
+                    self.zone_manager.set_tag(z.zone_id, tag, attributes=attrs,
+                                              page_marker_tags=self.active_profile.get("page_marker_tags"))
+        finally:
+            self.zone_manager.end_batch()
+        sug.invalidate()
+        self.on_zones_changed(recompute_reading_order=False)
+        self.viewer.redraw()
+        self.notify(f"{len(changes)} zone(s) retagged from your corrections", kind="success")
+
+    def apply_tag_to_similar(self, zone_id):
+        """Give every zone with the same style signature the selected zone's tag."""
+        zone = self.zone_manager.zones.get(zone_id)
+        if zone is None:
+            return
+        sug = self.tag_suggester()
+        label = sug.label_of(zone)
+        similar = sug.similar_zones(zone)
+        if not label or not similar:
+            return
+        pages = sorted({z.page for z in similar})
+        page_txt = ", ".join(map(str, pages[:12])) + (" ..." if len(pages) > 12 else "")
+        if not messagebox.askyesno("Apply to similar zones",
+                                   f"Tag {len(similar)} zone(s) with the same style as \"{label}\"?\n\n"
+                                   f"Pages: {page_txt}\n\nLocked zones are not changed. Undo reverts all of them."):
+            return
+        self.zone_manager.begin_batch()
+        try:
+            for z in similar:
+                tag, attrs = self._attrs_for_retag(z, label)
+                if tag is not None:
+                    self.zone_manager.set_tag(z.zone_id, tag, attributes=attrs,
+                                              page_marker_tags=self.active_profile.get("page_marker_tags"))
+        finally:
+            self.zone_manager.end_batch()
+        sug.invalidate()
+        self.on_zones_changed(recompute_reading_order=False)
+        self.on_zone_selected(zone_id)
+        self.notify(f"{len(similar)} zone(s) tagged {label}", kind="success")
+
     def on_zone_selected(self, zone_id):
         self.selected_zone_id = zone_id
         self.zone_tree.select(zone_id)
@@ -2509,6 +2639,8 @@ class App:
         self.on_zone_selected(zone_id)
 
     def on_zones_changed(self, recompute_reading_order=True, pages=None):
+        if getattr(self, "_suggester", None) is not None:
+            self._suggester.invalidate()          # new / changed tags teach the suggester
         # Reading Order is normally maintained by ZoneManager during the
         # individual mutation.  This flag is retained for operations that
         # explicitly require a full canonical recomputation (for example

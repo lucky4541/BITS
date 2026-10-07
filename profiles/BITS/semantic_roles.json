@@ -1,652 +1,663 @@
 {
- "_comment": [
-  "Semantic ROLE vocabulary for Auto Tag (BITS profile). Each role is a structural concept the layout / semantic engine recognises; it resolves to the profile's own tag whose label / name matches the synonym groups (all groups must match, no 'none' word may). See core/tag_knowledge."
- ],
- "roles": {
-  "title": {
-   "all": [
-    [
-     "title",
-     "maintitle",
-     "booktitle"
-    ]
-   ],
-   "none": [
-    "sub",
-    "toc",
-    "fig",
-    "box",
-    "poem",
-    "dialog",
-    "abs",
-    "kwd",
-    "statement",
-    "pro",
-    "tbl",
-    "table",
-    "msttitle",
-    "head"
-   ]
-  },
-  "subtitle": {
-   "all": [
-    [
-     "subtitle"
-    ]
-   ],
-   "none": [
-    "toc"
-   ]
-  },
-  "author": {
-   "all": [
-    [
-     "au",
-     "author"
-    ]
-   ],
-   "none": [
-    "toc"
-   ]
-  },
-  "affiliation": {
-   "all": [
-    [
-     "aff",
-     "affiliation"
-    ]
-   ],
-   "none": [
-    "toc"
-   ]
-  },
-  "label": {
-   "all": [
-    [
-     "label"
-    ]
-   ],
-   "none": [
-    "toc"
-   ]
-  },
-  "heading": {
-   "all": [
-    [
-     "h",
-     "head",
-     "heading"
-    ],
-    [
-     "{level}"
-    ]
-   ],
-   "none": [
-    "ack",
-    "acknowledgments",
-    "appendix",
-    "author",
-    "bibliography",
-    "box",
-    "boxsec",
-    "contents",
-    "dedication",
-    "en",
-    "ex",
-    "exercise",
-    "foreword",
-    "front",
-    "gloss",
-    "glossary",
-    "index",
-    "introduction",
-    "matter",
-    "notes",
-    "part",
-    "preface",
-    "ref",
-    "references",
-    "sec",
-    "toc"
-   ],
-   "levels": 6
-  },
-  "paragraph": {
-   "all": [
-    [
-     "para",
-     "p",
-     "paragraph"
-    ]
-   ],
-   "none": [
-    "list",
-    "box",
-    "abs",
-    "ex",
-    "exercise",
-    "exe",
-    "b",
-    "bpara"
-   ]
-  },
-  "paragraph_noindent": {
-   "all": [
-    [
-     "para",
-     "p",
-     "paragraph"
-    ],
-    [
-     "noindent",
-     "flush"
-    ]
-   ],
-   "none": [
-    "list",
-    "ex",
-    "exe",
-    "exercise"
-   ]
-  },
-  "paragraph_center": {
-   "all": [
-    [
-     "para",
-     "p",
-     "paragraph"
-    ],
-    [
-     "center",
-     "centre",
-     "centered"
-    ]
-   ]
-  },
-  "paragraph_right": {
-   "all": [
-    [
-     "para",
-     "p",
-     "paragraph"
-    ],
-    [
-     "right"
-    ]
-   ]
-  },
-  "paragraph_hanging": {
-   "all": [
-    [
-     "para",
-     "p",
-     "paragraph"
-    ],
-    [
-     "hang",
-     "hanging"
-    ]
-   ]
-  },
-  "list_numbered": {
-   "all": [
-    [
-     "list",
-     "li"
-    ],
-    [
-     "num",
-     "number",
-     "numbered",
-     "decimal",
-     "ordered"
-    ]
-   ],
-   "none": [
-    "toc",
-    "page"
-   ]
-  },
-  "list_bullet": {
-   "all": [
-    [
-     "list",
-     "li"
-    ],
-    [
-     "bull",
-     "bullet",
-     "bulleted",
-     "unordered"
-    ]
-   ]
-  },
-  "list_upper_alpha": {
-   "all": [
-    [
-     "list",
-     "li"
-    ],
-    [
-     "upper"
-    ],
-    [
-     "alpha"
-    ]
-   ]
-  },
-  "list_lower_alpha": {
-   "all": [
-    [
-     "list",
-     "li"
-    ],
-    [
-     "lower"
-    ],
-    [
-     "alpha"
-    ]
-   ]
-  },
-  "list_upper_roman": {
-   "all": [
-    [
-     "list",
-     "li"
-    ],
-    [
-     "upper"
-    ],
-    [
-     "roman"
-    ]
-   ]
-  },
-  "list_lower_roman": {
-   "all": [
-    [
-     "list",
-     "li"
-    ],
-    [
-     "lower"
-    ],
-    [
-     "roman"
-    ]
-   ]
-  },
-  "list_plain": {
-   "all": [
-    [
-     "list",
-     "li"
-    ],
-    [
-     "plain",
-     "simple"
-    ]
-   ]
-  },
-  "list_continuation": {
-   "all": [
-    [
-     "list",
-     "li"
-    ],
-    [
-     "para",
-     "p",
-     "continuation"
-    ]
-   ]
-  },
-  "caption": {
-   "all": [
-    [
-     "caption",
-     "figcaption"
-    ]
-   ],
-   "none": [
-    "tbl",
-    "table"
-   ]
-  },
-  "figure_title": {
-   "all": [
-    [
-     "fig",
-     "figure"
-    ],
-    [
-     "title"
-    ]
-   ],
-   "none": [
-    "toc"
-   ]
-  },
-  "figure_source": {
-   "all": [
-    [
-     "fig",
-     "figure"
-    ],
-    [
-     "source",
-     "credit"
-    ]
-   ]
-  },
-  "figure": {
-   "all": [
-    [
-     "image",
-     "img",
-     "figure",
-     "fig",
-     "illustration"
-    ]
-   ],
-   "none": [
-    "cover",
-    "logo",
-    "icon",
-    "tbl",
-    "table",
-    "eqn",
-    "ineq",
-    "pro",
-    "inline",
-    "uncap",
-    "map",
-    "illus",
-    "photo",
-    "chart",
-    "graph",
-    "diagram"
-   ],
-   "image": true
-  },
-  "table": {
-   "all": [
-    [
-     "table",
-     "tbl"
-    ]
-   ],
-   "none": [
-    "caption",
-    "foot",
-    "source",
-    "image",
-    "uncap",
-    "toc"
-   ]
-  },
-  "table_caption": {
-   "all": [
-    [
-     "tbl",
-     "table"
-    ],
-    [
-     "caption"
-    ]
-   ]
-  },
-  "table_footnote": {
-   "all": [
-    [
-     "tbl",
-     "table"
-    ],
-    [
-     "foot",
-     "footnote",
-     "note"
-    ]
-   ]
-  },
-  "table_source": {
-   "all": [
-    [
-     "tbl",
-     "table"
-    ],
-    [
-     "source"
-    ]
-   ]
-  },
-  "footnote": {
-   "all": [
-    [
-     "fn",
-     "footnote"
-    ]
-   ],
-   "none": [
-    "tbl",
-    "table"
-   ]
-  },
-  "endnote": {
-   "all": [
-    [
-     "endnote",
-     "endnotes"
-    ]
-   ],
-   "none": [
-    "head"
-   ]
-  },
-  "endnote_heading": {
-   "all": [
-    [
-     "en",
-     "endnote",
-     "endnotes",
-     "notes"
-    ],
-    [
-     "head",
-     "heading",
-     "title"
-    ]
-   ]
-  },
-  "page_number": {
-   "all": [
-    [
-     "page",
-     "pagenum",
-     "folio"
-    ],
-    [
-     "num",
-     "number",
-     "pagenum",
-     "folio"
-    ]
-   ],
-   "none": [
-    "toc"
-   ]
-  },
-  "blockquote": {
-   "all": [
-    [
-     "blockquote",
-     "quote",
-     "extract"
-    ]
-   ],
-   "none": [
-    "source"
-   ]
-  },
-  "blockquote_source": {
-   "all": [
-    [
-     "blockquote",
-     "quote",
-     "extract"
-    ],
-    [
-     "source",
-     "attribution"
-    ]
-   ]
-  },
-  "epigraph": {
-   "all": [
-    [
-     "epigraph",
-     "epi"
-    ]
-   ],
-   "none": [
-    "source"
-   ]
-  },
-  "epigraph_source": {
-   "all": [
-    [
-     "epigraph",
-     "epi"
-    ],
-    [
-     "source",
-     "attribution"
-    ]
-   ]
-  },
-  "verse_line": {
-   "all": [
-    [
-     "poem",
-     "verse",
-     "poetry",
-     "stanza"
-    ],
-    [
-     "line"
-    ]
-   ],
-   "none": [
-    "title",
-    "source"
-   ]
-  },
-  "verse_title": {
-   "all": [
-    [
-     "poem",
-     "verse",
-     "poetry"
-    ],
-    [
-     "title"
-    ]
-   ]
-  },
-  "verse_source": {
-   "all": [
-    [
-     "poem",
-     "verse",
-     "poetry"
-    ],
-    [
-     "source",
-     "attribution"
-    ]
-   ]
-  },
-  "reference_numbered": {
-   "all": [
-    [
-     "ref",
-     "reference"
-    ]
-   ],
-   "none": [
-    "head",
-    "title",
-    "bibliography",
-    "references"
-   ]
-  },
-  "reference_author_date": {
-   "all": [
-    [
-     "ref",
-     "reference"
-    ]
-   ],
-   "none": [
-    "head",
-    "title",
-    "bibliography",
-    "references"
-   ]
-  },
-  "reference_heading": {
-   "all": [
-    [
-     "ref",
-     "reference",
-     "references",
-     "bib",
-     "biblio",
-     "bibliography"
-    ],
-    [
-     "head",
-     "heading",
-     "title"
-    ]
-   ]
-  },
-  "equation": {
-   "all": [
-    [
-     "eqn",
-     "equation",
-     "math"
-    ]
-   ],
-   "none": [
-    "in",
-    "inline",
-    "ineq",
-    "num"
-   ],
-   "image": true
-  },
-  "running_header": {
-   "all": [
-    [
-     "running",
-     "runninghead",
-     "rh",
-     "header"
-    ]
-   ]
-  },
-  "running_footer": {
-   "all": [
-    [
-     "running",
-     "runningfoot",
-     "rf",
-     "footer"
-    ]
-   ]
+  "_comment": [
+    "Semantic ROLE vocabulary for Auto Tag (BITS profile). Each role is a structural concept the layout / semantic engine recognises; it resolves to the profile's own tag whose label / name matches the synonym groups (all groups must match, no 'none' word may). See core/tag_knowledge."
+  ],
+  "roles": {
+    "title": {
+      "all": [
+        [
+          "title",
+          "maintitle",
+          "booktitle"
+        ]
+      ],
+      "none": [
+        "sub",
+        "toc",
+        "fig",
+        "box",
+        "poem",
+        "dialog",
+        "abs",
+        "kwd",
+        "statement",
+        "pro",
+        "tbl",
+        "table",
+        "msttitle",
+        "head"
+      ]
+    },
+    "subtitle": {
+      "all": [
+        [
+          "subtitle"
+        ]
+      ],
+      "none": [
+        "toc"
+      ]
+    },
+    "author": {
+      "all": [
+        [
+          "au",
+          "author"
+        ]
+      ],
+      "none": [
+        "toc"
+      ]
+    },
+    "affiliation": {
+      "all": [
+        [
+          "aff",
+          "affiliation"
+        ]
+      ],
+      "none": [
+        "toc"
+      ]
+    },
+    "label": {
+      "all": [
+        [
+          "label"
+        ]
+      ],
+      "none": [
+        "toc"
+      ]
+    },
+    "heading": {
+      "all": [
+        [
+          "h",
+          "head",
+          "heading"
+        ],
+        [
+          "{level}"
+        ]
+      ],
+      "none": [
+        "ack",
+        "acknowledgments",
+        "appendix",
+        "author",
+        "bibliography",
+        "box",
+        "boxsec",
+        "contents",
+        "dedication",
+        "en",
+        "ex",
+        "exercise",
+        "foreword",
+        "front",
+        "gloss",
+        "glossary",
+        "index",
+        "introduction",
+        "matter",
+        "notes",
+        "part",
+        "preface",
+        "ref",
+        "references",
+        "sec",
+        "toc"
+      ],
+      "levels": 6
+    },
+    "paragraph": {
+      "all": [
+        [
+          "para",
+          "p",
+          "paragraph"
+        ]
+      ],
+      "none": [
+        "list",
+        "box",
+        "abs",
+        "ex",
+        "exercise",
+        "exe",
+        "b",
+        "bpara"
+      ]
+    },
+    "paragraph_noindent": {
+      "all": [
+        [
+          "para",
+          "p",
+          "paragraph"
+        ],
+        [
+          "noindent",
+          "flush"
+        ]
+      ],
+      "none": [
+        "list",
+        "ex",
+        "exe",
+        "exercise"
+      ]
+    },
+    "paragraph_center": {
+      "all": [
+        [
+          "para",
+          "p",
+          "paragraph"
+        ],
+        [
+          "center",
+          "centre",
+          "centered"
+        ]
+      ]
+    },
+    "paragraph_right": {
+      "all": [
+        [
+          "para",
+          "p",
+          "paragraph"
+        ],
+        [
+          "right"
+        ]
+      ]
+    },
+    "paragraph_hanging": {
+      "all": [
+        [
+          "para",
+          "p",
+          "paragraph"
+        ],
+        [
+          "hang",
+          "hanging"
+        ]
+      ]
+    },
+    "list_numbered": {
+      "all": [
+        [
+          "list",
+          "li"
+        ],
+        [
+          "num",
+          "number",
+          "numbered",
+          "decimal",
+          "ordered"
+        ]
+      ],
+      "none": [
+        "toc",
+        "page"
+      ]
+    },
+    "list_bullet": {
+      "all": [
+        [
+          "list",
+          "li"
+        ],
+        [
+          "bull",
+          "bullet",
+          "bulleted",
+          "unordered"
+        ]
+      ]
+    },
+    "list_upper_alpha": {
+      "all": [
+        [
+          "list",
+          "li"
+        ],
+        [
+          "upper"
+        ],
+        [
+          "alpha"
+        ]
+      ]
+    },
+    "list_lower_alpha": {
+      "all": [
+        [
+          "list",
+          "li"
+        ],
+        [
+          "lower"
+        ],
+        [
+          "alpha"
+        ]
+      ]
+    },
+    "list_upper_roman": {
+      "all": [
+        [
+          "list",
+          "li"
+        ],
+        [
+          "upper"
+        ],
+        [
+          "roman"
+        ]
+      ]
+    },
+    "list_lower_roman": {
+      "all": [
+        [
+          "list",
+          "li"
+        ],
+        [
+          "lower"
+        ],
+        [
+          "roman"
+        ]
+      ]
+    },
+    "list_plain": {
+      "all": [
+        [
+          "list",
+          "li"
+        ],
+        [
+          "plain",
+          "simple"
+        ]
+      ]
+    },
+    "list_continuation": {
+      "all": [
+        [
+          "list",
+          "li"
+        ],
+        [
+          "para",
+          "p",
+          "continuation"
+        ]
+      ]
+    },
+    "caption": {
+      "all": [
+        [
+          "caption",
+          "figcaption"
+        ]
+      ],
+      "none": [
+        "tbl",
+        "table"
+      ]
+    },
+    "figure_title": {
+      "all": [
+        [
+          "fig",
+          "figure"
+        ],
+        [
+          "title"
+        ]
+      ],
+      "none": [
+        "toc"
+      ]
+    },
+    "figure_source": {
+      "all": [
+        [
+          "fig",
+          "figure"
+        ],
+        [
+          "source",
+          "credit"
+        ]
+      ]
+    },
+    "figure": {
+      "all": [
+        [
+          "image",
+          "img",
+          "figure",
+          "fig",
+          "illustration"
+        ]
+      ],
+      "none": [
+        "cover",
+        "logo",
+        "icon",
+        "tbl",
+        "table",
+        "eqn",
+        "ineq",
+        "pro",
+        "inline",
+        "uncap",
+        "map",
+        "illus",
+        "photo",
+        "chart",
+        "graph",
+        "diagram"
+      ],
+      "image": true
+    },
+    "table": {
+      "all": [
+        [
+          "table",
+          "tbl"
+        ]
+      ],
+      "none": [
+        "caption",
+        "foot",
+        "source",
+        "image",
+        "uncap",
+        "toc"
+      ]
+    },
+    "table_caption": {
+      "all": [
+        [
+          "tbl",
+          "table"
+        ],
+        [
+          "caption"
+        ]
+      ]
+    },
+    "table_footnote": {
+      "all": [
+        [
+          "tbl",
+          "table"
+        ],
+        [
+          "foot",
+          "footnote",
+          "note"
+        ]
+      ]
+    },
+    "table_source": {
+      "all": [
+        [
+          "tbl",
+          "table"
+        ],
+        [
+          "source"
+        ]
+      ]
+    },
+    "footnote": {
+      "all": [
+        [
+          "fn",
+          "footnote"
+        ]
+      ],
+      "none": [
+        "tbl",
+        "table"
+      ]
+    },
+    "endnote": {
+      "all": [
+        [
+          "endnote",
+          "endnotes"
+        ]
+      ],
+      "none": [
+        "head"
+      ]
+    },
+    "endnote_heading": {
+      "all": [
+        [
+          "en",
+          "endnote",
+          "endnotes",
+          "notes"
+        ],
+        [
+          "head",
+          "heading",
+          "title"
+        ]
+      ]
+    },
+    "page_number": {
+      "all": [
+        [
+          "page",
+          "pagenum",
+          "folio"
+        ],
+        [
+          "num",
+          "number",
+          "pagenum",
+          "folio"
+        ]
+      ],
+      "none": [
+        "toc"
+      ]
+    },
+    "blockquote": {
+      "all": [
+        [
+          "blockquote",
+          "quote",
+          "extract"
+        ]
+      ],
+      "none": [
+        "source"
+      ]
+    },
+    "blockquote_source": {
+      "all": [
+        [
+          "blockquote",
+          "quote",
+          "extract"
+        ],
+        [
+          "source",
+          "attribution"
+        ]
+      ]
+    },
+    "epigraph": {
+      "all": [
+        [
+          "epigraph",
+          "epi"
+        ]
+      ],
+      "none": [
+        "source"
+      ]
+    },
+    "epigraph_source": {
+      "all": [
+        [
+          "epigraph",
+          "epi"
+        ],
+        [
+          "source",
+          "attribution"
+        ]
+      ]
+    },
+    "verse_line": {
+      "all": [
+        [
+          "poem",
+          "verse",
+          "poetry",
+          "stanza"
+        ],
+        [
+          "line"
+        ]
+      ],
+      "none": [
+        "title",
+        "source"
+      ]
+    },
+    "verse_title": {
+      "all": [
+        [
+          "poem",
+          "verse",
+          "poetry"
+        ],
+        [
+          "title"
+        ]
+      ]
+    },
+    "verse_source": {
+      "all": [
+        [
+          "poem",
+          "verse",
+          "poetry"
+        ],
+        [
+          "source",
+          "attribution"
+        ]
+      ]
+    },
+    "reference_numbered": {
+      "all": [
+        [
+          "ref",
+          "reference"
+        ]
+      ],
+      "none": [
+        "head",
+        "title",
+        "bibliography",
+        "references"
+      ]
+    },
+    "reference_author_date": {
+      "all": [
+        [
+          "ref",
+          "reference"
+        ]
+      ],
+      "none": [
+        "head",
+        "title",
+        "bibliography",
+        "references"
+      ]
+    },
+    "reference_heading": {
+      "all": [
+        [
+          "ref",
+          "reference",
+          "references",
+          "bib",
+          "biblio",
+          "bibliography"
+        ],
+        [
+          "head",
+          "heading",
+          "title"
+        ]
+      ]
+    },
+    "equation": {
+      "all": [
+        [
+          "eqn",
+          "equation",
+          "math"
+        ]
+      ],
+      "none": [
+        "in",
+        "inline",
+        "ineq",
+        "num"
+      ],
+      "image": true
+    },
+    "running_header": {
+      "all": [
+        [
+          "running",
+          "runninghead",
+          "rh",
+          "header"
+        ]
+      ]
+    },
+    "running_footer": {
+      "all": [
+        [
+          "running",
+          "runningfoot",
+          "rf",
+          "footer"
+        ]
+      ]
+    },
+    "chapter_author": {
+      "all": [
+        [
+          "chapter"
+        ],
+        [
+          "author",
+          "contrib"
+        ]
+      ]
+    }
   }
- }
 }

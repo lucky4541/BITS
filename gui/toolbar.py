@@ -64,7 +64,10 @@ class Toolbar(tk.Frame):
         self.file_menu.add_command(label="Save Project", command=app.save_project)
         self.file_menu.add_command(label="Load Reference Project", command=app.load_reference_project)
         self._auto_zone_index = 3
-        self.file_menu.add_command(label="Auto Zone", command=app.auto_zone, state="disabled")
+        # (copies zones from a loaded Reference Project - the layout/semantic
+        # engine is the toolbar's Auto Zone button)
+        self.file_menu.add_command(label="Auto Zone from Reference Project", command=app.auto_zone,
+                                   state="disabled")
         # "Auto Zone > Index" (spec 25) - the SAME App.auto_zone_index the
         # Tag Toolbox's contextual button already calls (gui/zone_panel.py),
         # just a second, always-reachable entry point into it that doesn't
@@ -236,6 +239,48 @@ class Toolbar(tk.Frame):
         merge_mb.config(menu=merge_menu)
         self._tooltips.append(theme.Tooltip(merge_mb, "Merge the selected zone's text into the previous zone"))
         sep(parent=row2)
+
+        # ---------------- AUTO ----------------
+        group_label("Auto", parent=row2)
+        smart = app.smart_az
+
+        def _menu_button(text, items, tooltip, primary=False):
+            mb = tk.Menubutton(row2, text=text, relief="flat",
+                               bg=palette["accent"] if primary else palette["button_bg"],
+                               fg=palette.get("accent_fg", "#ffffff") if primary else palette["text"],
+                               activebackground=palette.get("accent_hover", palette["accent"]) if primary
+                               else palette.get("hover_bg", palette["button_bg"]),
+                               font=theme.FONT_BODY_BOLD if primary else theme.FONT_BODY, cursor="hand2",
+                               bd=1, highlightthickness=1, highlightbackground=palette["border"], padx=10, pady=3)
+            mb.pack(side=tk.LEFT, padx=2)
+            menu = tk.Menu(mb, tearoff=0)
+            for item in items:
+                if item is None:
+                    menu.add_separator()
+                else:
+                    menu.add_command(label=item[0], command=item[1], accelerator=item[2] if len(item) > 2 else "")
+            mb.config(menu=menu)
+            self._tooltips.append(theme.Tooltip(mb, tooltip))
+            return mb
+
+        _menu_button("Auto Zone ▾", [
+            ("Auto Zone This Page", smart.auto_zone_page, "Ctrl+Shift+A"),
+            ("Auto Zone Whole Document...", smart.auto_zone_document),
+            ("Re-analyse This Page", smart.reanalyse_page),
+            None,
+            ("Link Page Continuations", smart.link_continuations_document),
+            ("Auto Zone Index (this page)", app.auto_zone_index),
+            None,
+            ("Validation Report...", smart.validation_report),
+        ], "Detect and tag zones automatically (layout + semantic engine, BITS / JATS)", primary=True)
+        _menu_button("Auto Tag ▾", [
+            ("Auto Tag This Page", smart.auto_tag_page),
+            ("Auto Tag Whole Document", smart.auto_tag_document),
+            None,
+            ("Retag From Your Corrections (learned styles)...", app.retag_from_corrections),
+            None,
+            ("Next Zone Needing Review", smart.next_review_zone, "F7"),
+        ], "Re-decide the tags of the automatic zones (your own and locked zones are kept)")
 
         # ---------------- PROFILE ----------------
         group_label("Profile", parent=row2)

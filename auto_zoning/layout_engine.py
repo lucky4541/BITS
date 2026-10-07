@@ -29,8 +29,8 @@ from core.formatting_detector import detect_bold_italic, line_baseline_stats
 from auto_zoning import list_detector, paragraph_auto_zone, table_detector, page_number_detector
 from auto_zoning.pdf_block_detector import detect_images
 
-HEADER_BAND = 0.09
-FOOTER_BAND = 0.09
+HEADER_BAND = 0.16            # running heads / folios are searched here (bleed + crop marks push them down);
+FOOTER_BAND = 0.14            # only page-number-like and repeated lines are taken from these bands
 SAME_LINE_DY = 0.35           # fraction of font size - baseline tolerance for joining fragments of one visual line
 SAME_LINE_GAP = 1.6           # fraction of font size - max horizontal gap joining fragments of one visual line
 FIGURE_MIN_SIDE = 24.0        # pt - smallest vector cluster treated as a figure
@@ -61,6 +61,7 @@ class LineFeature:
     caps_ratio: float = 0.0
     decorated_ratio: float = 0.0
     source: str = "pdf"
+    rotated: bool = False
 
     @property
     def width(self):
@@ -109,6 +110,7 @@ def extract_page_lines(page, with_decorations: bool = True) -> list:
                 "baseline": base or y1, "bold_n": bold_n, "italic_n": italic_n, "total": max(total, 1),
                 "font": fonts.most_common(1)[0][0] if fonts else "",
                 "caps": sum(1 for c in letters if c.isupper()) / max(len(letters), 1),
+                "rotated": abs((line.get("dir") or (1, 0))[0] - 1) > 0.05,
             })
     frags.sort(key=lambda f: (round(f["baseline"], 0), f["bbox"][0]))
     merged = []
@@ -144,7 +146,8 @@ def extract_page_lines(page, with_decorations: bool = True) -> list:
             bbox=tuple(f["bbox"]), text=text, font_size=round(float(f["size"]), 2),
             bold=f["bold_n"] / f["total"] >= 0.5, italic=f["italic_n"] / f["total"] >= 0.5,
             bold_ratio=f["bold_n"] / f["total"], italic_ratio=f["italic_n"] / f["total"],
-            font=f["font"], baseline=f["baseline"], caps_ratio=f["caps"], decorated_ratio=deco))
+            font=f["font"], baseline=f["baseline"], caps_ratio=f["caps"], decorated_ratio=deco,
+            rotated=f.get("rotated", False)))
     out.sort(key=lambda li: (li.bbox[1], li.bbox[0]))
     return out
 
@@ -207,6 +210,8 @@ def build_document_context(pdf_document, pages, line_cache=None) -> DocumentCont
     ctx = DocumentContext()
     size_counts = Counter()
     top_sigs, bottom_sigs = Counter(), Counter()
+    sig_ys = {}
+    sig_pages = {}
     indents = []
     per_page_lines = {}
     for pno in pages:
@@ -225,26 +230,49 @@ def build_document_context(pdf_document, pages, line_cache=None) -> DocumentCont
         _w, h = pdf_document.page_size(pno)
         for li in lines:
             size_counts[round(li.font_size, 1)] += max(1, len(li.text))
-        page_top = [li for li in lines if li.bbox[3] <= h * HEADER_BAND * 1.3]
-        page_bottom = [li for li in lines if li.bbox[1] >= h * (1 - FOOTER_BAND * 1.3)]
+        page_top = [li for li in lines if li.bbox[3] <= h * HEADER_BAND]
+        page_bottom = [li for li in lines if li.bbox[1] >= h * (1 - FOOTER_BAND)]
         for li in page_top:
             top_sigs[_signature(li.text)] += 1
+            sig_ys.setdefault(("t", _signature(li.text)), []).append(li.bbox[1])
+            sig_pages.setdefault(("t", _signature(li.text)), []).append(pno)
         for li in page_bottom:
             bottom_sigs[_signature(li.text)] += 1
+            sig_ys.setdefault(("b", _signature(li.text)), []).append(li.bbox[1])
+            sig_pages.setdefault(("b", _signature(li.text)), []).append(pno)
     if size_counts:
         ctx.body_size = size_counts.most_common(1)[0][0]
     n_pages = max(1, len(ctx.pages_seen))
-    need = 2 if n_pages <= 4 else max(3, int(0.25 * n_pages))
-    for sig, c in list(top_sigs.items()) + list(bottom_sigs.items()):
-        if c >= need and sig and sig != "#":
-            ctx.running_signatures.add(sig)
+    need = 2 if n_pages <= 4 else 3
+    for band, sigs in (("t", top_sigs), ("b", bottom_sigs)):
+        for sig, c in sigs.items():
+            if c < need or not sig or sig == "#":
+                continue
+            ys = sorted(sig_ys.get((band, sig), []))
+            mid = ys[len(ys) // 2] if ys else 0
+            pages_with = sorted(sig_pages.get((band, sig), []))
+            close = any(b - a <= 2 for a, b in zip(pages_with, pages_with[1:]))
+            if sum(1 for y in ys if abs(y - mid) <= 6) >= need and (close or n_pages <= 4):
+                ctx.running_signatures.add(sig)            # same place, on neighbouring pages
     # Heading-size ladder: sizes clearly above body used by short lines.
     heading_sizes = Counter()
+    from core import lang as _lang
     for pno, lines in per_page_lines.items():
+        seen = set()
         for li in lines:
-            if li.font_size >= ctx.body_size * 1.12 and len(li.text) <= 120 \
-                    and _signature(li.text) not in ctx.running_signatures:
-                heading_sizes[round(li.font_size, 1)] += 1
+            t = li.text.strip()
+            if li.rotated or not t or re.fullmatch(r"[\d\W]+", t):
+                continue                              # side tabs, page numbers
+            m = _lang.match_label(t, "chapter", "part", "section", "appendix")
+            if m and not m[1]:
+                continue                              # "Capítulo 1.2" on its own is a label, not a heading
+            if li.font_size >= ctx.body_size * 1.12 and len(t) <= 120 \
+                    and _signature(t) not in ctx.running_signatures:
+                seen.add(round(li.font_size, 1))
+        for size in seen:                             # counted once per page
+            heading_sizes[size] += 1
+    multi_page = {s: c for s, c in heading_sizes.items() if c >= 2}
+    heading_sizes = Counter(multi_page or heading_sizes)
     ladder = []
     for s in sorted(heading_sizes, reverse=True):
         if not ladder or abs(ladder[-1] - s) > max(0.6, 0.04 * s):
@@ -342,6 +370,49 @@ def _vector_figures(page, exclude_boxes, page_w, page_h, body_lines=()) -> list:
             continue  # a shaded/bordered text box, not an illustration
         out.append(box)
     return out
+
+
+def _is_background_panel(box, inside, ctx, page_w, page_h) -> bool:
+    """A coloured panel / image behind real text - a chapter-opening banner,
+    a shaded heading bar, a full-height tab at the page edge - is a
+    background, not an illustration: its text stays ordinary text."""
+    x0, y0, x1, y1 = box
+    if (x0 < 0.06 * page_w or x1 > 0.94 * page_w) and (y1 - y0) > 0.25 * page_h:
+        return True
+    body = ctx.body_size or 10.0
+    if any(li.font_size >= 1.25 * body and len(li.text.strip()) >= 3 for li in inside):
+        return True
+    return sum(len(li.text) for li in inside if li.font_size >= 0.95 * body) >= 80
+
+
+def _absorb_figure_labels(figures, body_lines, ctx):
+    """Short small-type lines set around an illustration (the labels of a
+    diagram that stick out of its drawing) belong to the figure - never a
+    caption ("Figura 1.2 ...") and never body-size text."""
+    if not figures:
+        return body_lines
+    from core import lang as _lang
+    body = ctx.body_size or 10.0
+    remaining = list(body_lines)
+    changed = True
+    while changed:
+        changed = False
+        for fl in figures:
+            fx0, fy0, fx1, fy1 = fl.bbox
+            for li in list(remaining):
+                t = li.text.strip()
+                if not t or len(t.split()) > 6 or len(t) > 45 or li.font_size > body * 0.97:
+                    continue
+                if _lang.match_label(t, "figure", "table"):
+                    continue
+                cx, cy = (li.bbox[0] + li.bbox[2]) / 2, (li.bbox[1] + li.bbox[3]) / 2
+                if fx0 - 30 <= cx <= fx1 + 30 and fy0 - 12 <= cy <= fy1 + 12:
+                    fl.lines.append(li)
+                    remaining.remove(li)
+                    fl.bbox = _union([fl.bbox, li.bbox])
+                    fx0, fy0, fx1, fy1 = fl.bbox
+                    changed = True
+    return remaining
 
 
 def _overlap_ratio(a, b) -> float:
@@ -525,6 +596,7 @@ def analyse_page(pdf_document, page_num: int, ctx: DocumentContext, lines=None, 
     except Exception:
         tables = []
     floats = []
+    tables = [t for t in tables if len([li for li in body_lines if _inside(li, t)]) >= 3]
     for t in tables:
         inside = [li for li in body_lines if _inside(li, t)]
         blk = LayoutBlock(kind="table", bbox=tuple(t), lines=inside)
@@ -539,11 +611,14 @@ def analyse_page(pdf_document, page_num: int, ctx: DocumentContext, lines=None, 
             continue
         # text inside an illustration (labels on a diagram) belongs to it
         inside = [li for li in body_lines if _inside(li, box, tol=0.5)]
+        if _is_background_panel(box, inside, ctx, page_w, page_h):
+            continue                      # a coloured panel behind real text is not a figure
         blk = LayoutBlock(kind="figure", bbox=tuple(box), lines=inside)
         blk.features = {"x": box[0] / page_w, "y": box[1] / page_h, "w": (box[2] - box[0]) / page_w,
                         "h": (box[3] - box[1]) / page_h, "vector": box in vector_figs}
         floats.append(blk)
         body_lines = [li for li in body_lines if not any(li is x for x in inside)]
+    body_lines = _absorb_figure_labels([f for f in floats if f.kind == "figure"], body_lines, ctx)
 
     # 3. footnote region
     rule_y = _footnote_separator(page, body_lines, page_w, page_h) if layout.source == "pdf" else None

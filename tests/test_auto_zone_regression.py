@@ -229,7 +229,7 @@ def test_auto_zone_is_idempotent_and_cached(book, bits_profile, decor_mode, tmp_
     first = az.auto_zone_page(1)
     again = az.auto_zone_page(1)
     assert first.created and not again.created
-    files = os.listdir(os.path.join(str(tmp_path), az.fingerprint))
+    files = os.listdir(az.cache_folder)
     assert any(f.startswith("p00001_") for f in files) and "context.json" in files
     # a fresh orchestrator re-uses the disk cache (no re-analysis needed)
     az2 = SmartAutoZoner(pdf, ZoneManager(pdf), bits_profile, {}, cache_dir=str(tmp_path))

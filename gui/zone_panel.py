@@ -1577,8 +1577,28 @@ class TagPanel(tk.Frame):
         clear_btn.pack(side="left", padx=(2, 6))
         clear_btn.bind("<Button-1>", lambda e: self._search_var.set(""))
 
+        # (group tabs replaced by collapsible group headers in the list - a
+        # row of 10 tabs made the panel ~1400px wide and squeezed the PDF)
         self._tab_bar = tk.Frame(header, bg=_p(palette, "panel_header_bg"))
-        self._tab_bar.pack(side="top", fill="x", padx=10, pady=(0, 8))
+
+        # SUGGESTED - tags for the selected zone (core/tag_suggest.py)
+        self._sugg_frame = tk.Frame(header, bg=_p(palette, "panel_header_bg"))
+        self._sugg_frame.pack(side="top", fill="x", padx=8, pady=(0, 4))
+        self._suggest_zone_id = None
+        self._suggest_job = None
+        self._suggestions = []
+        # RECENT - last used tags
+        self._recent_frame = tk.Frame(header, bg=_p(palette, "panel_header_bg"))
+        self._recent_frame.pack(side="top", fill="x", padx=8, pady=(0, 4))
+        self._recent = []
+        tools = tk.Frame(header, bg=_p(palette, "panel_header_bg"))
+        tools.pack(side="top", fill="x", padx=8, pady=(0, 6))
+        for txt, cmd in (("Expand all", lambda: self._set_all_groups(True)),
+                         ("Collapse all", lambda: self._set_all_groups(False))):
+            lb = tk.Label(tools, text=txt, bg=_p(palette, "panel_header_bg"), fg=_p(palette, "accent"),
+                          font=theme.FONT_SMALL, cursor="hand2")
+            lb.pack(side="left", padx=(0, 10))
+            lb.bind("<Button-1>", lambda e, c=cmd: c())
 
         deselect_btn = tk.Button(self, text="Deselect Tag", command=self._deselect)
         theme.style_button(deselect_btn, palette, kind="secondary")
@@ -1644,9 +1664,9 @@ class TagPanel(tk.Frame):
         self._all_tag_buttons = list(tag_buttons)
         self._all_tag_colors = tag_colors or DEFAULT_TAG_COLORS
         self._all_tag_groups = list(tag_groups or [])
-        self._collapsed_groups = set()
+        # every group starts collapsed except the first (accordion)
+        self._collapsed_groups = {g["label"] for g in self._all_tag_groups[1:]}
         self._active_group_label = self._all_tag_groups[0]["label"] if self._all_tag_groups else None
-        self._rebuild_tabs()
         self._tag_lookup = {label: (tag, attrs) for label, tag, attrs in self._all_tag_buttons}
         if self._search_var.get():
             self._search_var.set("")
@@ -1713,7 +1733,10 @@ class TagPanel(tk.Frame):
             if label in group_starts:
                 _current_group = group_starts[label]
             label_to_group[label] = _current_group
-        tab_filter_active = bool(self._all_tag_groups) and not query
+        tab_filter_active = False
+        group_sizes = {}
+        for _g in label_to_group.values():
+            group_sizes[_g] = group_sizes.get(_g, 0) + 1
         matches = {
             label: (not query or query in label.lower())
             and (not tab_filter_active or label_to_group.get(label) == self._active_group_label)
@@ -1756,15 +1779,16 @@ class TagPanel(tk.Frame):
                     _insert_auto_zone_index_button()
                     pending_index_button = False
                 group_label = group_starts[label]
-                if self._all_tag_groups:
-                    skip_until_next_group = False
+                if query and not any(matches[l] for l, g in label_to_group.items() if g == group_label):
+                    skip_until_next_group = True
                 else:
                     collapsed = (not query) and group_label in self._collapsed_groups
                     arrow = "▶" if collapsed else "▼"
                     header_row = tk.Frame(self._container, bg=_p(self.palette, "panel_header_bg"),
                                            cursor="hand2")
-                    header_row.pack(fill="x", padx=0, pady=(8, 1))
-                    header_lbl = tk.Label(header_row, text=f"{arrow}  {group_label.upper()}",
+                    header_row.pack(fill="x", padx=0, pady=(4, 1))
+                    header_lbl = tk.Label(header_row,
+                                          text=f"{arrow}  {group_label.upper()}  ({group_sizes.get(group_label, 0)})",
                                            bg=_p(self.palette, "panel_header_bg"),
                                            fg=_p(self.palette, "text_muted"),
                                            font=theme.FONT_SMALL_BOLD, anchor="w")
@@ -1796,8 +1820,11 @@ class TagPanel(tk.Frame):
                         activebackground=_p(self.palette, "hover_bg"),
                         relief="flat", bd=1, highlightthickness=1,
                         highlightbackground=_p(self.palette, "border"),
-                        font=theme.FONT_BODY, cursor="hand2", padx=8, pady=4)
+                        font=theme.FONT_BODY, cursor="hand2", padx=8, pady=2)
             b.pack(side="left", fill="x", expand=True)
+            # right-click / Shift+click: apply this tag to the selected zone
+            b.bind("<Button-3>", lambda e, l=label: self._apply_to_selected(l))
+            b.bind("<Shift-Button-1>", lambda e, l=label: (self._apply_to_selected(l), "break")[1])
             self.buttons[label] = b
             pending_index_button = tag in index_tags
         if pending_index_button:
@@ -1827,6 +1854,132 @@ class TagPanel(tk.Frame):
         self._manual_tag_label = label
         self._paint_active_tag(label)
         self.app.set_active_tag(tag, attrs)
+        self.note_used(label)
+
+    # ------------------------------------------------- accordion helpers
+    def _set_all_groups(self, expanded):
+        self._collapsed_groups = set() if expanded else {g["label"] for g in self._all_tag_groups}
+        self._render(self._search_var.get())
+
+    def _expand_group_of(self, label):
+        group = None
+        starts = {g["first"]: g["label"] for g in self._all_tag_groups}
+        for lab, _t, _a in self._all_tag_buttons:
+            if lab in starts:
+                group = starts[lab]
+            if lab == label:
+                break
+        if group and group in self._collapsed_groups:
+            self._collapsed_groups.discard(group)
+            self._render(self._search_var.get())
+
+    # ------------------------------------------------------------ recent
+    def note_used(self, label):
+        if not label:
+            return
+        if label in self._recent:
+            self._recent.remove(label)
+        self._recent.insert(0, label)
+        del self._recent[6:]
+        self._render_recent()
+
+    def _render_recent(self):
+        for c in list(self._recent_frame.winfo_children()):
+            c.destroy()
+        shown = [lab for lab in self._recent if lab in self._tag_lookup]
+        if not shown:
+            return
+        tk.Label(self._recent_frame, text="RECENT", bg=_p(self.palette, "panel_header_bg"),
+                 fg=_p(self.palette, "text_muted"), font=theme.FONT_SMALL_BOLD).grid(row=0, column=0, columnspan=2,
+                                                                                     sticky="w")
+        for i, lab in enumerate(shown):
+            b = tk.Label(self._recent_frame, text=lab, anchor="w", bg=_p(self.palette, "surface"),
+                         fg=_p(self.palette, "text"), font=theme.FONT_SMALL, cursor="hand2", padx=4,
+                         highlightthickness=1, highlightbackground=_p(self.palette, "border"))
+            b.grid(row=1 + i // 2, column=i % 2, sticky="ew", padx=(0, 3), pady=1)
+            b.bind("<Button-1>", lambda e, l=lab: self.select_label(l))
+            b.bind("<Button-3>", lambda e, l=lab: self._apply_to_selected(l))
+        self._recent_frame.grid_columnconfigure(0, weight=1, uniform="r")
+        self._recent_frame.grid_columnconfigure(1, weight=1, uniform="r")
+
+    # ------------------------------------------------------- suggestions
+    def _apply_to_selected(self, label):
+        zid = getattr(self.app, "selected_zone_id", None)
+        if zid and hasattr(self.app, "apply_tag_label_to_zone"):
+            self.app.apply_tag_label_to_zone(zid, label)
+            self.note_used(label)
+
+    def show_suggestions(self, zone):
+        """Suggested tags for the selected zone (computed when the UI is idle)."""
+        if self._suggest_job is not None:
+            try:
+                self.after_cancel(self._suggest_job)
+            except Exception:  # noqa: BLE001
+                pass
+            self._suggest_job = None
+        self._suggest_zone_id = zone.zone_id if zone is not None else None
+        if zone is None:
+            self._render_suggestions(None, [], [])
+            return
+        self._suggest_job = self.after(60, lambda zid=zone.zone_id: self._compute_suggestions(zid))
+
+    def _compute_suggestions(self, zone_id):
+        self._suggest_job = None
+        zone = self.app.zone_manager.zones.get(zone_id)
+        if zone is None or zone_id != self._suggest_zone_id:
+            return
+        current = None
+        try:
+            suggester = self.app.tag_suggester()
+            suggestions = suggester.suggest(zone, k=3)
+            current = suggester.label_of(zone)
+            similar = suggester.similar_zones(zone) if current else []
+        except Exception as e:  # noqa: BLE001
+            debug_log.log("SUGGEST", f"failed for {zone_id}: {e}")
+            suggestions, similar = [], []
+        self._render_suggestions(zone, suggestions, similar, current)
+
+    def _render_suggestions(self, zone, suggestions, similar, current=None):
+        for c in list(self._sugg_frame.winfo_children()):
+            c.destroy()
+        self._suggestions = list(suggestions)
+        if zone is None:
+            return
+        tk.Label(self._sugg_frame, text="SUGGESTED FOR THIS ZONE", bg=_p(self.palette, "panel_header_bg"),
+                 fg=_p(self.palette, "text_muted"), font=theme.FONT_SMALL_BOLD).pack(anchor="w")
+        if not suggestions:
+            tk.Label(self._sugg_frame, text="No suggestion yet - tag a few zones and the tool learns your styles.",
+                     bg=_p(self.palette, "panel_header_bg"), fg=_p(self.palette, "text_faint"),
+                     font=theme.FONT_SMALL, wraplength=230, justify="left").pack(fill="x", anchor="w")
+        why = tk.Label(self._sugg_frame, text="", bg=_p(self.palette, "panel_header_bg"),
+                       fg=_p(self.palette, "text_faint"), font=theme.FONT_SMALL, wraplength=230,
+                       justify="left", anchor="w")
+        for i, sg in enumerate(suggestions):
+            mark = "✓ " if sg.label == current else ""
+            b = tk.Button(self._sugg_frame, text=f"{mark}{sg.label}   {sg.percent}%", anchor="w",
+                          command=lambda l=sg.label: self._apply_to_selected(l))
+            strong = sg.score >= 0.75
+            b.configure(bg=_p(self.palette, "accent_tint") if strong else _p(self.palette, "surface"),
+                        fg=_p(self.palette, "text"), relief="flat", bd=1, highlightthickness=1,
+                        highlightbackground=_p(self.palette, "accent") if strong else _p(self.palette, "border"),
+                        font=theme.FONT_BODY, cursor="hand2", padx=6, pady=2)
+            b.pack(fill="x", pady=1)
+            reason = f"Alt+{i + 1}: " + (sg.reasons[0] if sg.reasons else "")
+            b.bind("<Enter>", lambda e, w=reason: why.configure(text=w))
+            b.bind("<Leave>", lambda e: why.configure(text=""))
+        if suggestions:
+            why.configure(text="Alt+1: " + (suggestions[0].reasons[0] if suggestions[0].reasons else ""))
+        why.pack(fill="x")
+        if similar and current:
+            lk = tk.Label(self._sugg_frame, text=f"Apply \"{current}\" to {len(similar)} zone(s) with this style",
+                          bg=_p(self.palette, "panel_header_bg"), fg=_p(self.palette, "accent"),
+                          font=theme.FONT_SMALL, cursor="hand2", wraplength=230, justify="left", anchor="w")
+            lk.pack(fill="x", pady=(2, 0))
+            lk.bind("<Button-1>", lambda e, z=zone.zone_id: self.app.apply_tag_to_similar(z))
+
+    def apply_suggestion(self, index):
+        if 0 <= index < len(self._suggestions):
+            self._apply_to_selected(self._suggestions[index].label)
 
     def select_label(self, label):
         entry = self._tag_lookup.get(label)
@@ -1851,7 +2004,10 @@ class TagPanel(tk.Frame):
 
     def highlight_tag_for_zone(self, zone):
         label = self._label_for_zone(zone) if zone is not None else self._manual_tag_label
+        if label and label not in self.buttons and not self._search_var.get():
+            self._expand_group_of(label)
         self._paint_active_tag(label)
+        self.show_suggestions(zone)
 
 
 class ZoneTreePanel(tk.Frame):

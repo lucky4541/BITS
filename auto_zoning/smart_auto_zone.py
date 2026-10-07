@@ -28,6 +28,7 @@ from auto_zoning.layout_engine import LayoutBlock, PageLayout, DocumentContext
 from auto_zoning.semantic_classifier import RoleCandidate
 
 ENGINE_VERSION = "layout-semantic-v1"
+ANALYSIS_VERSION = 2          # bump when layout / role logic changes: cached page analyses are redone
 OVERLAP_DROP = 0.5            # a candidate overlapping a protected zone by this much is dropped
 _MEMORY_CACHE_MAX = 64
 
@@ -164,10 +165,15 @@ class SmartAutoZoner:
         return hashlib.sha1(json.dumps(d, sort_keys=True).encode()).hexdigest()[:10]
 
     # ----------------------------------------------------------- cache
+    @property
+    def cache_folder(self):
+        """This document's analysis cache folder (versioned with ANALYSIS_VERSION)."""
+        return os.path.join(self.cache_dir, f"{self.fingerprint}-a{ANALYSIS_VERSION}") if self.cache_dir else None
+
     def _disk_path(self, name):
         if not self.cache_dir:
             return None
-        d = os.path.join(self.cache_dir, self.fingerprint)
+        d = os.path.join(self.cache_dir, f"{self.fingerprint}-a{ANALYSIS_VERSION}")
         os.makedirs(d, exist_ok=True)
         return os.path.join(d, name)
 
@@ -204,7 +210,7 @@ class SmartAutoZoner:
                 for k in [k for k in self._memory if k[0] == page]:
                     self._memory.pop(k, None)
             if self.cache_dir:
-                d = os.path.join(self.cache_dir, self.fingerprint)
+                d = os.path.join(self.cache_dir, f"{self.fingerprint}-a{ANALYSIS_VERSION}")
                 if os.path.isdir(d):
                     for name in os.listdir(d):
                         if page is None or name.startswith(f"p{page:05d}_"):

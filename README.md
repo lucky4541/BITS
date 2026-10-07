@@ -139,13 +139,40 @@ that would change any text is reverted. The status is one of `VALID`,
 installed` or `FAIL - text changed`; the details go to
 `<prefix>_validation.txt` next to the XML.
 
+## Tag toolbox and tag suggestions
+
+The tag toolbox is a fixed-width column (the PDF keeps the space): search box,
+**SUGGESTED FOR THIS ZONE**, **RECENT** tags, then the tag groups as a
+collapsible list (*Expand all* / *Collapse all*; the group of the selected
+zone opens by itself; a search shows matches from every group).
+
+* **Suggestions** (`core/tag_suggest.py`) for the selected zone, with a
+  percentage and the reason (hover). They combine
+  * the styles **you** tagged in this project (font face, size, colour, bold /
+    italic / caps, bullet, next to a figure / rule) - one tagged zone is enough;
+  * the text (figure / table labels, "Chapter 3", "References", "Index" ... in
+    any language, reference / note numbering, page numbers);
+  * the position (running heads, footers, larger-than-body type = heading).
+* **Alt+1 / Alt+2 / Alt+3** apply the 1st / 2nd / 3rd suggestion; a **right-click**
+  (or Shift+click) on any tag button applies it to the selected zone.
+* **Apply "<tag>" to N zone(s) with this style** - retags every zone that looks
+  the same as the selected one (one Undo step).
+* **Auto Tag ▾ › Retag From Your Corrections** - after you correct a few zones,
+  every automatic zone with exactly the style of a corrected zone gets the tag
+  you chose (a confirmation lists the changes first).
+
 ## Auto Zone / Auto Tag
 
-*File › Auto Zone / Auto Tag (BITS / JATS)* – layout analysis, semantic roles
+Toolbar **Auto Zone ▾** (this page - also **Ctrl+Shift+A** -, whole document,
+re-analyse page, page continuations, index, validation report) and **Auto Tag ▾**
+(this page, whole document, retag from your corrections, next zone needing
+review - F7): layout analysis, semantic roles
 (`profiles/BITS/semantic_roles.json`, `profiles/JATS/semantic_roles.json`),
 tag decisions with confidence and NEEDS REVIEW, character formatting
 (bold / italic / underline / strike), reference and note sections and page
 continuations. See [docs/AUTO_ZONE_ENGINE.md](docs/AUTO_ZONE_ENGINE.md).
+*File › Auto Zone from Reference Project* copies the zoning of a project you
+already finished for another edition of the same book.
 
 ## Code
 
@@ -157,6 +184,7 @@ continuations. See [docs/AUTO_ZONE_ENGINE.md](docs/AUTO_ZONE_ENGINE.md).
 | `core/bits/dtd.py` | DTD lookup, loading, DOCTYPE |
 | `core/bits/pipeline.py` | generate / validate / fix / preview |
 | `core/xml_generator.py` | zones → intermediate XML |
+| `core/tag_suggest.py` | tag suggestions / learned styles |
 | `app/xml_validation/` | launcher card 02 |
 | `core/fidelity_compare/` | PDF ↔ XML compare |
 

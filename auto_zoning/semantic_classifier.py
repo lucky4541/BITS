@@ -101,6 +101,12 @@ def classify_block(block, ctx, page_index_in_doc=None) -> list:
         ev = [f"list marker ({f.get('list_type')})", f"nesting level {f.get('list_level', 1)}"]
         return [RoleCandidate(role, 0.9, ev), RoleCandidate("paragraph", 0.35, ["could be prose"])]
     if kind == "verse_line":
+        hs, hev = _heading_score(f, ctx)
+        if hs >= 0.5 and (f.get("bold_ratio", 0) >= 0.6 or f.get("caps_ratio", 0) > 0.85
+                          or (f.get("font_ratio") or 1.0) >= 1.1):
+            level = ctx.heading_level(f.get("font_size", ctx.body_size or 10.0), f.get("bold_ratio", 0) >= 0.5)
+            return [RoleCandidate(f"heading_{level}", hs, hev + [f"document heading ladder level {level}"]),
+                    RoleCandidate("verse_line", 0.4, ["short line in a run of short lines"])]
         score = 0.72 + (0.12 if f.get("verse_group_size", 0) >= 3 else 0.0) + \
             (0.06 if f.get("left_indent", 0) > ctx.body_size else 0.0)
         ev = [f"short line in a run of {f.get('verse_group_size')} short lines", "ragged right, line breaks are not wraps"]
@@ -127,6 +133,13 @@ def classify_block(block, ctx, page_index_in_doc=None) -> list:
             level = min(6, max(level, depth))
         c.append(RoleCandidate(f"heading_{level}", hs, hev + [f"document heading ladder level {level}"]))
 
+    # a chapter / part / appendix number on its own line, in any language
+    # ("Capítulo 1.2", "Глава 3", "第3章", "3. fejezet") - the label of the title next to it
+    from core import lang as _lang
+    _m = _lang.match_label(block.text.strip(), "chapter", "part", "appendix", "section")
+    if _m and not _m[1] and f.get("n_lines", 9) <= 2:
+        c.append(RoleCandidate("label", 0.88, [f"\"{_m[0]}\" - a chapter / part number on its own"]))
+
     # label (chapter/part number line) - short, number pattern, bigger heading below
     if f.get("label_number") and f.get("words", 9) <= 4 and f.get("n_lines", 9) == 1:
         nxt = f.get("next_font_ratio")
@@ -149,6 +162,15 @@ def classify_block(block, ctx, page_index_in_doc=None) -> list:
             ev.append("label + number pattern")
         role = "table_caption" if (fb == "table" or fa == "table") else "caption"
         c.append(RoleCandidate(role, _clamp(s), ev))
+
+    # a block that opens with a figure / table label in any language ("Figura 1.2.3.",
+    # "Рис. 2", "表1", "Tabla 1.1.1") in body-size or smaller type is a caption, even
+    # when the illustration is not directly above / below it
+    if not (fa or fb) and fr <= 1.02:
+        if _lang.match_label(block.text.strip(), "figure"):
+            c.append(RoleCandidate("caption", 0.8, ["starts with a figure label"]))
+        elif _lang.match_label(block.text.strip(), "table"):
+            c.append(RoleCandidate("table_caption", 0.8, ["starts with a table label"]))
 
     # prose paragraph family
     n = f.get("n_lines", 1)
@@ -202,6 +224,18 @@ def classify_block(block, ctx, page_index_in_doc=None) -> list:
     return c
 
 
+def _looks_like_names(text: str) -> bool:
+    """"Gary Andrew Dildy", "Radu Apostol y Farr Nezhat", "A. B. Smith, C. Jones" -
+    most words capitalised (or initials / joiners), no sentence verbs."""
+    from core import lang
+    words = [w.strip(",;.") for w in (text or "").split() if w.strip(",;.")]
+    if not words:
+        return False
+    joiners = set(lang.NAME_JOINERS) | {"&", "de", "van", "von", "der", "da", "del", "di", "le", "la"}
+    good = sum(1 for w in words if w[:1].isupper() or w.lower() in joiners or not w[:1].isalpha())
+    return good / len(words) >= 0.8
+
+
 def classify_page(layout, ctx, page_index_in_doc=None) -> dict:
     """{id(block): [RoleCandidate, ...]} for every block of the page, after
     the contextual second pass."""
@@ -230,6 +264,21 @@ def _contextual_pass(layout, ctx, out):
                     "verse_line": "verse_source"}[prev_role]
             cands.insert(0, RoleCandidate(role, 0.82, [f"short attribution line right after a {prev_role}",
                                                          "right aligned" if f.get("right_aligned") else "dash lead"]))
+        # the line of names right under a chapter / article title (a chapter
+        # label may sit between them): its author(s)
+        title_b = None
+        for back in (1, 2):
+            pb = flow[i - back] if i - back >= 0 else None
+            if pb is not None and _top(out[id(pb)]) in ("heading_1", "title"):
+                title_b = pb
+                break
+            if pb is None or _top(out[id(pb)]) != "label":
+                break
+        if title_b is not None and f.get("n_lines", 9) <= 2 and 1 < f.get("words", 0) <= 16 \
+                and not f.get("ends_with_punct") and _looks_like_names(b.text) \
+                and 0 <= b.bbox[1] - title_b.bbox[3] <= 2.5 * (ctx.body_size or 10):
+            role = "author" if _top(out[id(title_b)]) == "title" else "chapter_author"
+            cands.insert(0, RoleCandidate(role, 0.8, ["a line of names right under the title"]))
         # a single verse line split off by the segmenter, between verse lines
         nxt_b = flow[i + 1] if i + 1 < len(flow) else None
         if b.kind == "text" and prev_role == "verse_line" and nxt_b is not None and \
